@@ -1,509 +1,1029 @@
-/* ==========================
-   Check Master - main.js
-   نسخه پایدار بدون باگ سود
-   ========================== */
+// ====== Helper functions for digits & formatting ======
 
-let checks = [];
-let referrers = ["بدون معرف"];
-let futureDays = 30;
-
-// Load from storage
-function loadData() {
-  checks = JSON.parse(localStorage.getItem("checks") || "[]");
-  referrers = JSON.parse(localStorage.getItem("referrers") || `["بدون معرف"]`);
+function toEnglishDigits(str) {
+  if (!str) return "";
+  const persian = "۰۱۲۳۴۵۶۷۸۹";
+  const arabic = "٠١٢٣٤٥٦٧٨٩";
+  let res = "";
+  for (let ch of String(str)) {
+    const pIndex = persian.indexOf(ch);
+    if (pIndex !== -1) {
+      res += String(pIndex);
+      continue;
+    }
+    const aIndex = arabic.indexOf(ch);
+    if (aIndex !== -1) {
+      res += String(aIndex);
+      continue;
+    }
+    res += ch;
+  }
+  return res;
 }
 
-// Save all
-function saveAll() {
-  localStorage.setItem("checks", JSON.stringify(checks));
-  localStorage.setItem("referrers", JSON.stringify(referrers));
+function onlyDigits(str) {
+  return toEnglishDigits(str).replace(/\D+/g, "");
 }
 
-/* -------------------------
-   ابزارهای کمکی
-   ------------------------- */
-
-function toInt(x) {
-  return parseInt(String(x).replace(/[^\d]/g, "")) || 0;
+function formatMoney(num) {
+  if (!num || isNaN(num)) return "0";
+  return Number(num).toLocaleString("en-US");
 }
 
-function fmt(x) {
-  return x.toLocaleString("fa-IR");
+function parseMoney(str) {
+  const digits = onlyDigits(str);
+  return digits ? Number(digits) : 0;
 }
 
-// تاریخ میلادی → timestamp
-function parseJalali(j) {
+// تاریخ جلالی به صورت yy/mm/dd نگه می‌داریم و برای اختلاف روز از مدل ساده استفاده می‌کنیم
+// هر ماه = 30 روز، سال = 12*30 روز (برای سود کاملاً سازگاره)
+function parseJalali(str) {
+  const clean = onlyDigits(str);
+  if (clean.length < 6) return null; // yy mm dd => حداقل ۶ رقم لازم
+  const yy = Number(clean.slice(0, 2));
+  const mm = Number(clean.slice(2, 4));
+  const dd = Number(clean.slice(4, 6));
+  if (mm < 1 || mm > 12 || dd < 1 || dd > 31) return null;
+  return { yy, mm, dd };
+}
+
+// تبدیل yy/mm/dd به یک اندیس روز فرضی برای محاسبه اختلاف
+function jalaliToIndex(j) {
+  // سال مبنا 1400 + yy
+  const year = 1400 + j.yy;
+  const totalMonths = year * 12 + (j.mm - 1);
+  const index = totalMonths * 30 + (j.dd - 1);
+  return index;
+}
+
+function diffJalaliDays(j1, j2) {
+  if (!j1 || !j2) return 0;
+  const d1 = jalaliToIndex(j1);
+  const d2 = jalaliToIndex(j2);
+  return d2 - d1;
+}
+
+// امروز را هم به صورت تقریبی جلالی (فقط برای طبقه‌بندی سود) محاسبه می‌کنیم
+function todayJalaliApprox() {
+  // تبدیل ساده گرگوری به جلالی با تقریب، برای گزارش کافی است
+  const g = new Date();
+  const gy = g.getFullYear();
+  const gm = g.getMonth() + 1;
+  const gd = g.getDate();
+
+  // الگوریتم تبدیل ساده‌سازی‌شده (برای ماه‌های اخیر معمولاً درست است)
+  const g_d_m = [0,31,59,90,120,151,181,212,243,273,304,334];
+  let jy, jm, jd;
+  let gy2 = gy - 1600;
+  let gm2 = gm - 1;
+  let gd2 = gd - 1;
+  let gDayNo =
+    365 * gy2 +
+    Math.floor((gy2 + 3) / 4) -
+    Math.floor((gy2 + 99) / 100) +
+    Math.floor((gy2 + 399) / 400);
+  gDayNo += g_d_m[gm2] + gd2;
+  if (gm2 > 1 && ((gy % 4 === 0 && gy % 100 !== 0) || gy % 400 === 0)) {
+    gDayNo++;
+  }
+  let jDayNo = gDayNo - 79;
+  const jNp = Math.floor(jDayNo / 12053);
+  jDayNo = jDayNo % 12053;
+  jy = 979 + 33 * jNp + 4 * Math.floor(jDayNo / 1461);
+  jDayNo %= 1461;
+  if (jDayNo >= 366) {
+    jy += Math.floor((jDayNo - 366) / 365);
+    jDayNo = (jDayNo - 366) % 365;
+  }
+  const jMonthDays = [31,31,31,31,31,31,30,30,30,30,30,29];
+  for (jm = 0; jm < 11 && jDayNo >= jMonthDays[jm]; jm++) {
+    jDayNo -= jMonthDays[jm];
+  }
+  jd = jDayNo + 1;
+
+  // فقط دو رقم آخر سال می‌خواهیم
+  const yy = jy % 100;
+  return { yy, mm: jm + 1, dd: jd };
+}
+
+function jalaliToString(j) {
+  if (!j) return "";
+  const pad = n => (n < 10 ? "0" + n : String(n));
+  return pad(j.yy) + "/" + pad(j.mm) + "/" + pad(j.dd);
+}
+
+// ====== State & storage ======
+const STORAGE_KEY = "checkMaster_v1";
+
+let state = {
+  referrers: ["بدون معرف"],
+  checks: [], // هر چک یک شیء با فیلدهای: id, type, seriesId, index, ref, buyer, phone, principal, rate, startJ, endJ, amount, code, label, note, status, extraDays, extraProfit
+  futureDays: 30
+};
+
+function loadState() {
   try {
-    const [yy, mm, dd] = j.split("/").map(Number);
-    const g = JalaliDate.toGregorian(yy + 1300, mm, dd);
-    return new Date(g.gy, g.gm - 1, g.gd).getTime();
-  } catch {
-    return null;
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const parsed = JSON.parse(raw);
+    if (parsed && Array.isArray(parsed.checks)) {
+      state = Object.assign({}, state, parsed);
+      // تضمین اینکه "بدون معرف" وجود دارد
+      if (!state.referrers.includes("بدون معرف")) {
+        state.referrers.unshift("بدون معرف");
+      }
+    }
+  } catch (e) {
+    console.log("loadState error", e);
   }
 }
 
-// timestamp → جلالی yy/mm/dd
-function toJalali(ts) {
-  const d = new Date(ts);
-  const j = JalaliDate.toJalali(d.getFullYear(), d.getMonth() + 1, d.getDate());
-  return `${String(j.jy - 1300).padStart(2, "0")}/${String(j.jm).padStart(2, "0")}/${String(j.jd).padStart(2, "0")}`;
+function saveState() {
+  try {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        referrers: state.referrers,
+        checks: state.checks,
+        futureDays: state.futureDays
+      })
+    );
+  } catch (e) {
+    console.log("saveState error", e);
+  }
 }
 
-/* -------------------------
-   محاسبه سود یک چک
-   ------------------------- */
-function computeProfit(principal, rate, start, end) {
-  const oneDay = 86400000;
-  const days = Math.max(1, Math.floor((end - start) / oneDay));
-  const monthly = principal * (rate / 100);
-  return Math.round((monthly / 30) * days);
+function genId() {
+  return (
+    "c_" +
+    Math.random().toString(36).slice(2, 8) +
+    Date.now().toString(36)
+  );
 }
-/* -------------------------
-   محاسبه و نمایش KPI ها
-   ------------------------- */
-function updateKPIs() {
-  const now = Date.now();
-  const oneDay = 86400000;
 
-  let today = 0, month = 0, next = 0;
-  let active = 0, near = 0, overdue = 0, paid = 0;
+// ====== Init & global wiring ======
 
-  let baseProfit = 0;
-  let extProfit = 0;
+window.addEventListener("DOMContentLoaded", () => {
+  loadState();
+  setupInputHandlers();
+  renderRefSelects();
+  updateKPIs();
+  renderManage();
+});
 
-  checks.forEach(ch => {
-    const p = toInt(ch.principal);
-    const rate = parseFloat(ch.rate);
-    const profit = computeProfit(p, rate, ch.startDate, ch.endDate);
-
-    if (ch.extendedProfit)
-      extProfit += ch.extendedProfit;
-
-    if (ch.status === "paid") {
-      paid++;
-      return;
+// جلوگیری از زوم با دابل-تپ روی iOS
+let lastTouchEnd = 0;
+document.addEventListener(
+  "touchend",
+  function (event) {
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) {
+      event.preventDefault();
     }
+    lastTouchEnd = now;
+  },
+  { passive: false }
+);
 
-    baseProfit += profit;
+// سوییچ تب‌ها (از HTML صدا زده می‌شود)
+function switchTab(ev) {
+  const targetId = ev.currentTarget.getAttribute("data-target");
+  document.querySelectorAll("section[id^='view-']").forEach(sec => {
+    sec.classList.add("hidden");
+  });
+  document.querySelectorAll(".tab").forEach(t => {
+    t.classList.remove("active");
+  });
+  document.getElementById(targetId).classList.remove("hidden");
+  ev.currentTarget.classList.add("active");
+}
+// ====== Input handlers (money, numeric, jalali, etc.) ======
 
-    const daysLeft = Math.floor((ch.endDate - now) / oneDay);
+function setupInputHandlers() {
+  const doc = document;
 
-    if (daysLeft < 0) overdue++;
-    else if (daysLeft <= 10) near++;
-    else active++;
-
-    // امروز
-    today += Math.round((p * (rate / 100)) / 30);
-
-    // ماه جاری
-    const date = new Date(now);
-    if (new Date(ch.endDate).getMonth() === date.getMonth())
-      month += profit;
-
-    // 30 روز آینده
-    if (ch.endDate <= now + futureDays * oneDay)
-      next += profit;
+  // فرمت مبلغ‌ها
+  doc.addEventListener("input", function (e) {
+    const el = e.target;
+    if (el.classList.contains("money-input")) {
+      const digits = onlyDigits(el.value).slice(0, 15); // حداکثر ۱۵ رقم
+      const num = digits ? Number(digits) : 0;
+      el.value = digits ? formatMoney(num) : "";
+    } else if (el.classList.contains("numeric-int")) {
+      el.value = onlyDigits(el.value).slice(0, 6);
+    } else if (el.classList.contains("numeric-dec")) {
+      let v = toEnglishDigits(el.value);
+      v = v.replace(/[^0-9.]/g, "");
+      // فقط یک نقطه
+      const parts = v.split(".");
+      if (parts.length > 2) {
+        v = parts[0] + "." + parts.slice(1).join("");
+      }
+      // محدود کردن به 2 رقم اعشار
+      const m = v.match(/^(\d{0,4})(\.\d{0,2})?/);
+      el.value = m ? (m[1] || "") + (m[2] || "") : "";
+    } else if (el.classList.contains("jalali-input")) {
+      let d = onlyDigits(el.value).slice(0, 6);
+      let out = "";
+      if (d.length <= 2) {
+        out = d;
+      } else if (d.length <= 4) {
+        out = d.slice(0, 2) + "/" + d.slice(2);
+      } else {
+        out = d.slice(0, 2) + "/" + d.slice(2, 4) + "/" + d.slice(4);
+      }
+      el.value = out;
+    } else if (el.classList.contains("phone-input")) {
+      el.value = onlyDigits(el.value).slice(0, 11);
+    } else if (el.classList.contains("code-16")) {
+      el.value = onlyDigits(el.value).slice(0, 16);
+    }
   });
 
-  // نمایش
-  document.getElementById("kpiToday").innerText = fmt(today);
-  document.getElementById("kpiMonth").innerText = fmt(month);
-  document.getElementById("kpiNext30").innerText = fmt(next);
-
-  document.getElementById("kpiActive").innerText = active;
-  document.getElementById("kpiNear").innerText = near;
-  document.getElementById("kpiOverdue").innerText = overdue;
-  document.getElementById("kpiPaid").innerText = paid;
-
-  document.getElementById("kpiTotalProfitBase").innerText = fmt(baseProfit);
-  document.getElementById("kpiExtendedProfit").innerText = fmt(extProfit);
-  document.getElementById("kpiTotalProfit").innerText = fmt(baseProfit + extProfit);
-}
-
-/* -------------------------
-   سوییچ تب‌ها
-   ------------------------- */
-function switchTab(ev) {
-  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  ev.currentTarget.classList.add("active");
-
-  const target = ev.currentTarget.dataset.target;
-  document.querySelectorAll("main section").forEach(s => s.classList.add("hidden"));
-  document.getElementById(target).classList.remove("hidden");
-}
-
-/* -------------------------
-   تغییر تعداد روز آینده
-   ------------------------- */
-function changeFutureDays() {
-  const n = prompt("محاسبه سود چند روز آینده؟", futureDays);
-  if (!n) return;
-  futureDays = Math.max(1, parseInt(n));
-  document.getElementById("kpiNextDays").innerText = futureDays;
-  updateKPIs();
-}
-/* -------------------------
-   پیش‌نمایش سود
-   ------------------------- */
-function previewCalc() {
-  const p = toInt(document.getElementById("principal").value);
-  const r = parseFloat(document.getElementById("rate").value);
-  const s = parseJalali(document.getElementById("startJ").value);
-  const e = parseJalali(document.getElementById("endJ").value);
-
-  if (!p || !r || !s || !e)
-    return document.getElementById("previewBox").innerText = "اطلاعات ناقص است.";
-
-  const pr = computeProfit(p, r, s, e);
-  document.getElementById("previewBox").innerText = `سود این چک: ${fmt(pr)} ریال`;
-}
-
-/* -------------------------
-   ساخت چک جدید
-   ------------------------- */
-function saveCheck() {
-  const type = document.getElementById("checkType").value;
-  const buyer = document.getElementById("buyerName").value.trim();
-  const phone = document.getElementById("buyerPhone").value.trim();
-  const ref = document.getElementById("refSelect").value;
-
-  const principal = toInt(document.getElementById("principal").value);
-  const rate = parseFloat(document.getElementById("rate").value);
-
-  const sJ = document.getElementById("startJ").value;
-  const sDate = parseJalali(sJ);
-
-  if (type === "single") {
-    const endJ = document.getElementById("endJ").value;
-    const eDate = parseJalali(endJ);
-
-    const code = document.getElementById("singleCode").value;
-
-    checks.push({
-      id: crypto.randomUUID(),
-      type,
-      buyer,
-      phone,
-      ref,
-      principal,
-      rate,
-      startJ: sJ,
-      startDate: sDate,
-      endJ,
-      endDate: eDate,
-      code,
-      label: "",
-      note: "",
-      status: "unpaid",
-      extendedProfit: 0
-    });
+  // وقتی نوع چک عوض می‌شود، قسمت‌های مربوطه را نشان/مخفی می‌کنیم
+  const typeSelect = document.getElementById("checkType");
+  if (typeSelect) {
+    typeSelect.addEventListener("change", handleCheckTypeChange);
+    handleCheckTypeChange(); // بار اول
   }
 
-  else {
-    const months = parseInt(document.getElementById("months").value);
-    let grace = parseInt(document.getElementById("graceMonths").value);
-    if (grace < 1) grace = 1; // پیش فرض
+  // سرچ مدیریت
+  const searchInput = document.getElementById("searchInput");
+  if (searchInput) {
+    searchInput.addEventListener("input", () => renderManage());
+  }
 
-    let baseDate = sDate;
+  // فیلدهای تاریخ فیلتر
+  const fromJ = document.getElementById("fromJ");
+  const toJ = document.getElementById("toJ");
+  if (fromJ) fromJ.addEventListener("input", () => renderManage());
+  if (toJ) toJ.addEventListener("input", () => renderManage());
+}
 
-    for (let i = 1; i <= months; i++) {
-      const mIndex = i + (grace - 1);
+function handleCheckTypeChange() {
+  const type = document.getElementById("checkType").value;
+  const singleExtra = document.getElementById("singleExtra");
+  const singleEndWrap = document.getElementById("singleEndWrap");
+  const monthlyExtra = document.getElementById("monthlyExtra");
 
-      // تاریخ سررسید
-      const d = new Date(sDate);
-      d.setMonth(d.getMonth() + mIndex);
+  if (type === "single") {
+    singleExtra.classList.remove("hidden");
+    singleEndWrap.style.display = "";
+    monthlyExtra.classList.add("hidden");
+  } else {
+    singleExtra.classList.add("hidden");
+    singleEndWrap.style.display = "none";
+    monthlyExtra.classList.remove("hidden");
+  }
+}
 
-      const endDate = d.getTime();
-      const endJ = toJalali(endDate);
+// ====== Referrers ======
 
-      checks.push({
-        id: crypto.randomUUID(),
-        type,
-        buyer,
-        phone,
-        ref,
-        principal,
-        rate,
-        startJ: sJ,
-        startDate: sDate,
+function renderRefSelects() {
+  const refSelect = document.getElementById("refSelect");
+  const editRef = document.getElementById("editRef");
+
+  const makeOptions = sel => {
+    if (!sel) return;
+    sel.innerHTML = "";
+    state.referrers.forEach(r => {
+      const opt = document.createElement("option");
+      opt.value = r;
+      opt.textContent = r;
+      sel.appendChild(opt);
+    });
+  };
+
+  makeOptions(refSelect);
+  makeOptions(editRef);
+}
+
+function addReferrer() {
+  const inp = document.getElementById("newReferrer");
+  if (!inp) return;
+  const name = inp.value.trim();
+  if (!name) return;
+  if (!state.referrers.includes(name)) {
+    state.referrers.push(name);
+    saveState();
+    renderRefSelects();
+  }
+  inp.value = "";
+}
+
+// ====== Building check objects from form ======
+
+function getFormBaseData() {
+  const type = document.getElementById("checkType").value;
+  const ref = document.getElementById("refSelect").value || "بدون معرف";
+  const buyer = document.getElementById("buyerName").value.trim();
+  const phone = document.getElementById("buyerPhone").value.trim();
+  const principal = parseMoney(
+    document.getElementById("principal").value
+  );
+  const rate = Number(
+    toEnglishDigits(document.getElementById("rate").value)
+  );
+  const startJStr = document.getElementById("startJ").value;
+  const startJ = parseJalali(startJStr);
+
+  if (!buyer) throw new Error("نام خریدار خالی است.");
+  if (!principal || principal <= 0)
+    throw new Error("مبلغ اصل را درست وارد کن.");
+  if (!rate || rate <= 0)
+    throw new Error("درصد سود را درست وارد کن.");
+  if (!startJ)
+    throw new Error("تاریخ صدور را به صورت yy/mm/dd وارد کن.");
+
+  return {
+    type,
+    ref,
+    buyer,
+    phone,
+    principal,
+    rate,
+    startJ,
+    startJStr
+  };
+}
+
+function buildSingleCheckFromForm() {
+  const base = getFormBaseData();
+  const endJStr = document.getElementById("endJ").value;
+  const endJ = parseJalali(endJStr);
+  if (!endJ)
+    throw new Error("تاریخ سررسید را به صورت yy/mm/dd وارد کن.");
+  const code = document.getElementById("singleCode").value.trim();
+
+  const id = genId();
+
+  const check = {
+    id,
+    type: "single",
+    seriesId: null,
+    index: 1,
+    ref: base.ref,
+    buyer: base.buyer,
+    phone: base.phone,
+    principal: base.principal,
+    rate: base.rate,
+    startJ: base.startJ,
+    startJStr: base.startJStr,
+    endJ,
+    endJStr,
+    amount: 0, // بعداً اگر خواستی دستی ست کن
+    code,
+    label: "",
+    note: "",
+    status: "unpaid",
+    extraDays: 0,
+    extraProfit: 0
+  };
+
+  return [check];
+}
+
+// برای چک‌های ماهانه
+function buildMonthlyChecksFromForm() {
+  const base = getFormBaseData();
+  const months = Number(
+    toEnglishDigits(document.getElementById("months").value)
+  );
+  const graceMonths = Number(
+    toEnglishDigits(document.getElementById("graceMonths").value || "0")
+  );
+
+  if (!months || months <= 0 || months > 36)
+    throw new Error("تعداد ماه باید بین 1 تا 36 باشد.");
+
+  const seriesId = genId();
+  const checks = [];
+
+  // اگر لیست ماهانه قبلاً تولید شده باشد (کاربر ویرایش کرده)، از آن بخوانیم
+  const monthlyList = document.getElementById("monthlyList");
+  const rows = monthlyList.querySelectorAll("[data-month-index]");
+  if (rows.length > 0) {
+    rows.forEach(row => {
+      const idx = Number(row.getAttribute("data-month-index"));
+      const endJInput = row.querySelector(".m-end");
+      const codeInput = row.querySelector(".m-code");
+      const amtInput = row.querySelector(".m-amount");
+
+      const endJStr = endJInput.value;
+      const endJ = parseJalali(endJStr);
+      if (!endJ)
+        throw new Error("تاریخ سررسید قسط " + idx + " نامعتبر است.");
+
+      const code = codeInput.value.trim();
+      const amount = parseMoney(amtInput.value);
+
+      const c = {
+        id: genId(),
+        type: "monthly",
+        seriesId,
+        index: idx,
+        ref: base.ref,
+        buyer: base.buyer,
+        phone: base.phone,
+        principal: base.principal,
+        rate: base.rate,
+        startJ: base.startJ,
+        startJStr: base.startJStr,
         endJ,
-        endDate,
-        code: "",
+        endJStr,
+        amount,
+        code,
         label: "",
         note: "",
         status: "unpaid",
-        extendedProfit: 0
-      });
-    }
+        extraDays: 0,
+        extraProfit: 0
+      };
+      checks.push(c);
+    });
+
+    return checks;
   }
 
-  saveAll();
-  alert("چک با موفقیت ذخیره شد");
-  updateKPIs();
-  renderManage();
-}
-/* -------------------------
-   نمایش مدیریت
-   ------------------------- */
-function renderManage() {
-  const box = document.getElementById("manageList");
-  const q = document.getElementById("searchInput").value.trim();
+  // در غیر این صورت، خودمان تاریخ‌ها را به صورت ساده می‌سازیم
+  const baseIndex = jalaliToIndex(base.startJ);
+  for (let i = 0; i < months; i++) {
+    const monthOffset = graceMonths + i; // چند ماه بعد از شروع
+    const endIndex = baseIndex + monthOffset * 30;
+    // تبدیل معکوس index به yy/mm/dd ساده (هر ماه 30 روز)
+    const totalMonths = Math.floor(endIndex / 30);
+    const dayInMonth = (endIndex % 30) + 1;
+    const year = Math.floor(totalMonths / 12);
+    const month = (totalMonths % 12) + 1;
+    const jy = year - 1400; // برعکس کاری که در jalaliToIndex کردیم
+    const endJ = { yy: jy, mm: month, dd: dayInMonth };
+    const endJStr = jalaliToString(endJ);
 
-  let list = checks.filter(ch => {
-    if (q) {
-      const S = JSON.stringify(ch);
-      if (!S.includes(q)) return false;
-    }
-    return true;
-  });
+    const c = {
+      id: genId(),
+      type: "monthly",
+      seriesId,
+      index: i + 1,
+      ref: base.ref,
+      buyer: base.buyer,
+      phone: base.phone,
+      principal: base.principal,
+      rate: base.rate,
+      startJ: base.startJ,
+      startJStr: base.startJStr,
+      endJ,
+      endJStr,
+      amount: 0,
+      code: "",
+      label: "",
+      note: "",
+      status: "unpaid",
+      extraDays: 0,
+      extraProfit: 0
+    };
+    checks.push(c);
+  }
 
-  box.innerHTML = "";
-  list.forEach(ch => {
-    const div = document.createElement("div");
-    div.className = "check-card";
-    div.innerHTML = `
-      <div class="check-top">
-        <div><b>${ch.buyer}</b> - ${fmt(ch.principal)} ریال</div>
-        <button class="small" onclick="openEdit('${ch.id}')">ویرایش</button>
-      </div>
-      <div>${ch.endJ} - سود: ${fmt(computeProfit(ch.principal, ch.rate, ch.startDate, ch.endDate))}</div>
-    `;
-    box.appendChild(div);
-  });
-}
-
-/* -------------------------
-   ویرایش چک
-   ------------------------- */
-function openEdit(id) {
-  const ch = checks.find(c => c.id === id);
-  if (!ch) return;
-
-  document.getElementById("editBack").style.display = "flex";
-
-  document.getElementById("editId").value = ch.id;
-  document.getElementById("editBuyer").value = ch.buyer;
-  document.getElementById("editPhone").value = ch.phone;
-  document.getElementById("editType").value = ch.type;
-  document.getElementById("editCode").value = ch.code;
-  document.getElementById("editLabel").value = ch.label || "";
-  document.getElementById("editNote").value = ch.note || "";
-
-  document.getElementById("editRate").value = ch.rate;
-  document.getElementById("editAmount").value = fmt(ch.principal);
-
-  document.getElementById("editStartJ").value = ch.startJ;
-  document.getElementById("editStart").value = ch.startDate;
-
-  document.getElementById("editEndJ").value = ch.endJ;
-  document.getElementById("editEnd").value = ch.endDate;
-
-  document.getElementById("editStatus").value = ch.status;
-
-  const pr = computeProfit(ch.principal, ch.rate, ch.startDate, ch.endDate) + (ch.extendedProfit || 0);
-  document.getElementById("editProfitDisplay").value = fmt(pr);
-
-  // Referrer list
-  const sel = document.getElementById("editRef");
-  sel.innerHTML = "";
-  referrers.forEach(r => {
-    const opt = document.createElement("option");
-    opt.value = r;
-    opt.innerText = r;
-    if (r === ch.ref) opt.selected = true;
-    sel.appendChild(opt);
-  });
+  return checks;
 }
 
-function closeEdit() {
-  document.getElementById("editBack").style.display = "none";
-}
-
-/* -------------------------
-   ذخیره ویرایش
-   ------------------------- */
-function applyEdit() {
-  const id = document.getElementById("editId").value;
-  const ch = checks.find(c => c.id === id);
-
-  ch.buyer = document.getElementById("editBuyer").value.trim();
-  ch.phone = document.getElementById("editPhone").value.trim();
-  ch.ref = document.getElementById("editRef").value;
-  ch.code = document.getElementById("editCode").value;
-  ch.label = document.getElementById("editLabel").value;
-  ch.note = document.getElementById("editNote").value;
-
-  ch.rate = parseFloat(document.getElementById("editRate").value);
-
-  const ps = parseInt(document.getElementById("editAmount").value.replace(/,/g, ""));
-  ch.principal = ps;
-
-  ch.startJ = document.getElementById("editStartJ").value;
-  ch.startDate = parseJalali(ch.startJ);
-
-  ch.endJ = document.getElementById("editEndJ").value;
-  ch.endDate = parseJalali(ch.endJ);
-
-  ch.status = document.getElementById("editStatus").value;
-
-  saveAll();
-  closeEdit();
-  renderManage();
-  updateKPIs();
-}
-
-/* -------------------------
-   تمدید چک
-   ------------------------- */
-function extendCheck() {
-  const id = document.getElementById("editId").value;
-  const ch = checks.find(c => c.id === id);
-
-  const newEnd = prompt("تاریخ سررسید جدید (جلالی: yy/mm/dd)", ch.endJ);
-  if (!newEnd) return;
-
-  const oldProfit = computeProfit(ch.principal, ch.rate, ch.startDate, ch.endDate);
-  const newDate = parseJalali(newEnd);
-
-  const newProfit = computeProfit(ch.principal, ch.rate, ch.startDate, newDate);
-
-  const diff = newProfit - oldProfit;
-
-  ch.extendedProfit = (ch.extendedProfit || 0) + diff;
-  ch.endJ = newEnd;
-  ch.endDate = newDate;
-
-  saveAll();
-  alert("تمدید شد");
-  closeEdit();
-  updateKPIs();
-  renderManage();
-}
-/* -------------------------
-   نمایش جزئیات گزارش
-   ------------------------- */
-function openDetail(type) {
-  const box = document.getElementById("detailBody");
-  box.innerHTML = "";
-
-  const now = Date.now();
-  const oneDay = 86400000;
-
-  let title = "";
-
-  checks.forEach(ch => {
-    let show = false;
-
-    if (type === "today") show = true;
-    if (type === "month") {
-      if (new Date(ch.endDate).getMonth() === new Date(now).getMonth()) show = true;
-    }
-    if (type === "next30") {
-      if (ch.endDate <= now + futureDays * oneDay) show = true;
-    }
-    if (type === "active") {
-      if (ch.status === "unpaid" && ch.endDate > now + 10 * oneDay) show = true;
-    }
-    if (type === "near") {
-      const left = Math.floor((ch.endDate - now) / oneDay);
-      if (left <= 10 && left >= 0) show = true;
-    }
-    if (type === "overdue") {
-      if (ch.endDate < now && ch.status === "unpaid") show = true;
-    }
-    if (type === "paid") {
-      if (ch.status === "paid") show = true;
-    }
-
-    if (show) {
-      const div = document.createElement("div");
-      div.className = "check-card";
-      const profit = computeProfit(ch.principal, ch.rate, ch.startDate, ch.endDate);
-      div.innerHTML = `
-        <div class="check-top">
-          <div><b>${ch.buyer}</b> - ${fmt(ch.principal)} ریال</div>
+// ساخت لیست قابل ویرایش برای چک‌های ماهانه
+function buildMonthlyUI() {
+  try {
+    const checks = buildMonthlyChecksFromForm();
+    const list = document.getElementById("monthlyList");
+    list.innerHTML = "";
+    checks.forEach(ch => {
+      const row = document.createElement("div");
+      row.className = "check-card";
+      row.setAttribute("data-month-index", String(ch.index));
+      row.innerHTML = `
+        <div class="row">
+          <div>
+            <label>قسط ${ch.index} - تاریخ سررسید (جلالی)</label>
+            <input class="jalali-input m-end" value="${ch.endJStr}">
+          </div>
+          <div>
+            <label>شناسه ۱۶ رقمی</label>
+            <input class="code-16 m-code" maxlength="16" inputmode="numeric" placeholder="فقط عدد">
+          </div>
         </div>
-        <div>${ch.endJ} - سود: ${fmt(profit)}</div>
+        <div class="row">
+          <div>
+            <label>مبلغ چک (نمایشی)</label>
+            <input class="money-input m-amount" data-money="1" placeholder="مثلاً 120,000,000">
+          </div>
+        </div>
       `;
-      box.appendChild(div);
+      list.appendChild(row);
+    });
+  } catch (e) {
+    document.getElementById("monthlyList").innerHTML =
+      '<div class="tiny" style="color:#fecaca;">' + e.message + "</div>";
+  }
+}
+
+// ====== Preview & Save ======
+
+function calcProfitForCheck(ch) {
+  const days = diffJalaliDays(ch.startJ, ch.endJ) + ch.extraDays;
+  if (days <= 0) return { base: 0, extra: ch.extraProfit || 0, total: ch.extraProfit || 0 };
+  const baseProfit = ch.principal * (ch.rate / 100) * (days / 30);
+  const extra = ch.extraProfit || 0;
+  return {
+    base: baseProfit,
+    extra,
+    total: baseProfit + extra
+  };
+}
+
+function previewCalc() {
+  const box = document.getElementById("previewBox");
+  box.textContent = "";
+  try {
+    const type = document.getElementById("checkType").value;
+    let checks;
+    if (type === "single") {
+      checks = buildSingleCheckFromForm();
+    } else {
+      checks = buildMonthlyChecksFromForm();
+    }
+    let totalProfit = 0;
+    checks.forEach(ch => {
+      const p = calcProfitForCheck(ch);
+      totalProfit += p.total;
+    });
+    box.innerHTML =
+      "تعداد چک‌ها: <b>" +
+      checks.length +
+      "</b> | سود کل تقریبی: <b>" +
+      formatMoney(Math.round(totalProfit)) +
+      "</b> ریال";
+  } catch (e) {
+    box.innerHTML =
+      '<span style="color:#fecaca;">' + e.message + "</span>";
+  }
+}
+
+function saveCheck() {
+  try {
+    const type = document.getElementById("checkType").value;
+    let checks;
+    if (type === "single") {
+      checks = buildSingleCheckFromForm();
+    } else {
+      // اگر هنوز UI ساخته نشده باشد، اول بسازیم
+      if (!document.getElementById("monthlyList").children.length) {
+        buildMonthlyUI();
+      }
+      checks = buildMonthlyChecksFromForm();
+    }
+
+    // اضافه به استیت
+    state.checks = state.checks.concat(checks);
+    saveState();
+
+    // ریست فرم
+    document.getElementById("buyerName").value = "";
+    document.getElementById("buyerPhone").value = "";
+    document.getElementById("principal").value = "";
+    document.getElementById("rate").value = "";
+    document.getElementById("startJ").value = "";
+    document.getElementById("endJ").value = "";
+    document.getElementById("singleCode").value = "";
+    document.getElementById("months").value = "";
+    document.getElementById("graceMonths").value = "1";
+    document.getElementById("monthlyList").innerHTML = "";
+    document.getElementById("previewBox").textContent = "";
+
+    updateKPIs();
+    renderManage();
+
+    alert("چک‌ها با موفقیت ذخیره شدند.");
+  } catch (e) {
+    alert("خطا در ذخیره: " + e.message);
+  }
+}
+
+// وقتی تعداد ماه یا تنفس عوض شد، لیست ماهانه را بسازیم
+(function () {
+  const months = document.getElementById("months");
+  const grace = document.getElementById("graceMonths");
+  if (months) months.addEventListener("input", buildMonthlyUI);
+  if (grace) grace.addEventListener("input", buildMonthlyUI);
+})();
+// ====== Input handlers (money, numeric, jalali, etc.) ======
+
+function setupInputHandlers() {
+  const doc = document;
+
+  // فرمت مبلغ‌ها
+  doc.addEventListener("input", function (e) {
+    const el = e.target;
+    if (el.classList.contains("money-input")) {
+      const digits = onlyDigits(el.value).slice(0, 15); // حداکثر ۱۵ رقم
+      const num = digits ? Number(digits) : 0;
+      el.value = digits ? formatMoney(num) : "";
+    } else if (el.classList.contains("numeric-int")) {
+      el.value = onlyDigits(el.value).slice(0, 6);
+    } else if (el.classList.contains("numeric-dec")) {
+      let v = toEnglishDigits(el.value);
+      v = v.replace(/[^0-9.]/g, "");
+      // فقط یک نقطه
+      const parts = v.split(".");
+      if (parts.length > 2) {
+        v = parts[0] + "." + parts.slice(1).join("");
+      }
+      // محدود کردن به 2 رقم اعشار
+      const m = v.match(/^(\d{0,4})(\.\d{0,2})?/);
+      el.value = m ? (m[1] || "") + (m[2] || "") : "";
+    } else if (el.classList.contains("jalali-input")) {
+      let d = onlyDigits(el.value).slice(0, 6);
+      let out = "";
+      if (d.length <= 2) {
+        out = d;
+      } else if (d.length <= 4) {
+        out = d.slice(0, 2) + "/" + d.slice(2);
+      } else {
+        out = d.slice(0, 2) + "/" + d.slice(2, 4) + "/" + d.slice(4);
+      }
+      el.value = out;
+    } else if (el.classList.contains("phone-input")) {
+      el.value = onlyDigits(el.value).slice(0, 11);
+    } else if (el.classList.contains("code-16")) {
+      el.value = onlyDigits(el.value).slice(0, 16);
     }
   });
 
-  let map = {
-    today: "سود امروز",
-    month: "سود ماه جاری",
-    next30: `${futureDays} روز آینده`,
-    active: "چک‌های فعال",
-    near: "نزدیک سررسید",
-    overdue: "چک‌های معوق",
-    paid: "پرداخت شده‌ها"
+  // وقتی نوع چک عوض می‌شود، قسمت‌های مربوطه را نشان/مخفی می‌کنیم
+  const typeSelect = document.getElementById("checkType");
+  if (typeSelect) {
+    typeSelect.addEventListener("change", handleCheckTypeChange);
+    handleCheckTypeChange(); // بار اول
+  }
+
+  // سرچ مدیریت
+  const searchInput = document.getElementById("searchInput");
+  if (searchInput) {
+    searchInput.addEventListener("input", () => renderManage());
+  }
+
+  // فیلدهای تاریخ فیلتر
+  const fromJ = document.getElementById("fromJ");
+  const toJ = document.getElementById("toJ");
+  if (fromJ) fromJ.addEventListener("input", () => renderManage());
+  if (toJ) toJ.addEventListener("input", () => renderManage());
+}
+
+function handleCheckTypeChange() {
+  const type = document.getElementById("checkType").value;
+  const singleExtra = document.getElementById("singleExtra");
+  const singleEndWrap = document.getElementById("singleEndWrap");
+  const monthlyExtra = document.getElementById("monthlyExtra");
+
+  if (type === "single") {
+    singleExtra.classList.remove("hidden");
+    singleEndWrap.style.display = "";
+    monthlyExtra.classList.add("hidden");
+  } else {
+    singleExtra.classList.add("hidden");
+    singleEndWrap.style.display = "none";
+    monthlyExtra.classList.remove("hidden");
+  }
+}
+
+// ====== Referrers ======
+
+function renderRefSelects() {
+  const refSelect = document.getElementById("refSelect");
+  const editRef = document.getElementById("editRef");
+
+  const makeOptions = sel => {
+    if (!sel) return;
+    sel.innerHTML = "";
+    state.referrers.forEach(r => {
+      const opt = document.createElement("option");
+      opt.value = r;
+      opt.textContent = r;
+      sel.appendChild(opt);
+    });
   };
 
-  document.getElementById("detailTitle").innerText = map[type] || "جزئیات";
-  document.getElementById("detailBack").style.display = "flex";
+  makeOptions(refSelect);
+  makeOptions(editRef);
 }
 
-function closeDetail() {
-  document.getElementById("detailBack").style.display = "none";
+function addReferrer() {
+  const inp = document.getElementById("newReferrer");
+  if (!inp) return;
+  const name = inp.value.trim();
+  if (!name) return;
+  if (!state.referrers.includes(name)) {
+    state.referrers.push(name);
+    saveState();
+    renderRefSelects();
+  }
+  inp.value = "";
 }
 
-/* -------------------------
-   سرچ و فیلتر
-   ------------------------- */
-function clearSearch() {
-  document.getElementById("searchInput").value = "";
-  renderManage();
+// ====== Building check objects from form ======
+
+function getFormBaseData() {
+  const type = document.getElementById("checkType").value;
+  const ref = document.getElementById("refSelect").value || "بدون معرف";
+  const buyer = document.getElementById("buyerName").value.trim();
+  const phone = document.getElementById("buyerPhone").value.trim();
+  const principal = parseMoney(
+    document.getElementById("principal").value
+  );
+  const rate = Number(
+    toEnglishDigits(document.getElementById("rate").value)
+  );
+  const startJStr = document.getElementById("startJ").value;
+  const startJ = parseJalali(startJStr);
+
+  if (!buyer) throw new Error("نام خریدار خالی است.");
+  if (!principal || principal <= 0)
+    throw new Error("مبلغ اصل را درست وارد کن.");
+  if (!rate || rate <= 0)
+    throw new Error("درصد سود را درست وارد کن.");
+  if (!startJ)
+    throw new Error("تاریخ صدور را به صورت yy/mm/dd وارد کن.");
+
+  return {
+    type,
+    ref,
+    buyer,
+    phone,
+    principal,
+    rate,
+    startJ,
+    startJStr
+  };
 }
 
-/* -------------------------
-   پشتیبان‌گیری
-   ------------------------- */
-function exportCSV() {
-  let out = "buyer,ref,principal,rate,start,end\n";
-  checks.forEach(c => {
-    out += `${c.buyer},${c.ref},${c.principal},${c.rate},${c.startJ},${c.endJ}\n`;
-  });
-  const blob = new Blob([out], { type: "text/csv" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "checks.csv";
-  link.click();
+function buildSingleCheckFromForm() {
+  const base = getFormBaseData();
+  const endJStr = document.getElementById("endJ").value;
+  const endJ = parseJalali(endJStr);
+  if (!endJ)
+    throw new Error("تاریخ سررسید را به صورت yy/mm/dd وارد کن.");
+  const code = document.getElementById("singleCode").value.trim();
+
+  const id = genId();
+
+  const check = {
+    id,
+    type: "single",
+    seriesId: null,
+    index: 1,
+    ref: base.ref,
+    buyer: base.buyer,
+    phone: base.phone,
+    principal: base.principal,
+    rate: base.rate,
+    startJ: base.startJ,
+    startJStr: base.startJStr,
+    endJ,
+    endJStr,
+    amount: 0, // بعداً اگر خواستی دستی ست کن
+    code,
+    label: "",
+    note: "",
+    status: "unpaid",
+    extraDays: 0,
+    extraProfit: 0
+  };
+
+  return [check];
 }
 
-function exportJSON() {
-  const blob = new Blob([JSON.stringify(checks, null, 2)], { type: "application/json" });
-  const link = document.createElement("a");
-  link.href = URL.createObjectURL(blob);
-  link.download = "checks.json";
-  link.click();
+// برای چک‌های ماهانه
+function buildMonthlyChecksFromForm() {
+  const base = getFormBaseData();
+  const months = Number(
+    toEnglishDigits(document.getElementById("months").value)
+  );
+  const graceMonths = Number(
+    toEnglishDigits(document.getElementById("graceMonths").value || "0")
+  );
+
+  if (!months || months <= 0 || months > 36)
+    throw new Error("تعداد ماه باید بین 1 تا 36 باشد.");
+
+  const seriesId = genId();
+  const checks = [];
+
+  // اگر لیست ماهانه قبلاً تولید شده باشد (کاربر ویرایش کرده)، از آن بخوانیم
+  const monthlyList = document.getElementById("monthlyList");
+  const rows = monthlyList.querySelectorAll("[data-month-index]");
+  if (rows.length > 0) {
+    rows.forEach(row => {
+      const idx = Number(row.getAttribute("data-month-index"));
+      const endJInput = row.querySelector(".m-end");
+      const codeInput = row.querySelector(".m-code");
+      const amtInput = row.querySelector(".m-amount");
+
+      const endJStr = endJInput.value;
+      const endJ = parseJalali(endJStr);
+      if (!endJ)
+        throw new Error("تاریخ سررسید قسط " + idx + " نامعتبر است.");
+
+      const code = codeInput.value.trim();
+      const amount = parseMoney(amtInput.value);
+
+      const c = {
+        id: genId(),
+        type: "monthly",
+        seriesId,
+        index: idx,
+        ref: base.ref,
+        buyer: base.buyer,
+        phone: base.phone,
+        principal: base.principal,
+        rate: base.rate,
+        startJ: base.startJ,
+        startJStr: base.startJStr,
+        endJ,
+        endJStr,
+        amount,
+        code,
+        label: "",
+        note: "",
+        status: "unpaid",
+        extraDays: 0,
+        extraProfit: 0
+      };
+      checks.push(c);
+    });
+
+    return checks;
+  }
+
+  // در غیر این صورت، خودمان تاریخ‌ها را به صورت ساده می‌سازیم
+  const baseIndex = jalaliToIndex(base.startJ);
+  for (let i = 0; i < months; i++) {
+    const monthOffset = graceMonths + i; // چند ماه بعد از شروع
+    const endIndex = baseIndex + monthOffset * 30;
+    // تبدیل معکوس index به yy/mm/dd ساده (هر ماه 30 روز)
+    const totalMonths = Math.floor(endIndex / 30);
+    const dayInMonth = (endIndex % 30) + 1;
+    const year = Math.floor(totalMonths / 12);
+    const month = (totalMonths % 12) + 1;
+    const jy = year - 1400; // برعکس کاری که در jalaliToIndex کردیم
+    const endJ = { yy: jy, mm: month, dd: dayInMonth };
+    const endJStr = jalaliToString(endJ);
+
+    const c = {
+      id: genId(),
+      type: "monthly",
+      seriesId,
+      index: i + 1,
+      ref: base.ref,
+      buyer: base.buyer,
+      phone: base.phone,
+      principal: base.principal,
+      rate: base.rate,
+      startJ: base.startJ,
+      startJStr: base.startJStr,
+      endJ,
+      endJStr,
+      amount: 0,
+      code: "",
+      label: "",
+      note: "",
+      status: "unpaid",
+      extraDays: 0,
+      extraProfit: 0
+    };
+    checks.push(c);
+  }
+
+  return checks;
 }
 
-/* -------------------------
-   شروع
-   ------------------------- */
-window.onload = () => {
-  loadData();
-
-  // لیست معرف‌ها
-  const refSel = document.getElementById("refSelect");
-  refSel.innerHTML = "";
-  referrers.forEach(r => {
-    const opt = document.createElement("option");
-    opt.value = r;
-    opt.innerText = r;
-    refSel.appendChild(opt);
-  });
-
-  updateKPIs();
-  renderManage();
-};
-// --- PWA: ثبت سرویس‌ورکر برای کار کردن آفلاین ---
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", () => {
-    navigator.serviceWorker
-      .register("./sw.js")
-      .catch(err => {
-        console.log("Service Worker registration failed:", err);
-      });
-  });
+// ساخت لیست قابل ویرایش برای چک‌های ماهانه
+function buildMonthlyUI() {
+  try {
+    const checks = buildMonthlyChecksFromForm();
+    const list = document.getElementById("monthlyList");
+    list.innerHTML = "";
+    checks.forEach(ch => {
+      const row = document.createElement("div");
+      row.className = "check-card";
+      row.setAttribute("data-month-index", String(ch.index));
+      row.innerHTML = `
+        <div class="row">
+          <div>
+            <label>قسط ${ch.index} - تاریخ سررسید (جلالی)</label>
+            <input class="jalali-input m-end" value="${ch.endJStr}">
+          </div>
+          <div>
+            <label>شناسه ۱۶ رقمی</label>
+            <input class="code-16 m-code" maxlength="16" inputmode="numeric" placeholder="فقط عدد">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>مبلغ چک (نمایشی)</label>
+            <input class="money-input m-amount" data-money="1" placeholder="مثلاً 120,000,000">
+          </div>
+        </div>
+      `;
+      list.appendChild(row);
+    });
+  } catch (e) {
+    document.getElementById("monthlyList").innerHTML =
+      '<div class="tiny" style="color:#fecaca;">' + e.message + "</div>";
+  }
 }
+
+// ====== Preview & Save ======
+
+function calcProfitForCheck(ch) {
+  const days = diffJalaliDays(ch.startJ, ch.endJ) + ch.extraDays;
+  if (days <= 0) return { base: 0, extra: ch.extraProfit || 0, total: ch.extraProfit || 0 };
+  const baseProfit = ch.principal * (ch.rate / 100) * (days / 30);
+  const extra = ch.extraProfit || 0;
+  return {
+    base: baseProfit,
+    extra,
+    total: baseProfit + extra
+  };
+}
+
+function previewCalc() {
+  const box = document.getElementById("previewBox");
+  box.textContent = "";
+  try {
+    const type = document.getElementById("checkType").value;
+    let checks;
+    if (type === "single") {
+      checks = buildSingleCheckFromForm();
+    } else {
+      checks = buildMonthlyChecksFromForm();
+    }
+    let totalProfit = 0;
+    checks.forEach(ch => {
+      const p = calcProfitForCheck(ch);
+      totalProfit += p.total;
+    });
+    box.innerHTML =
+      "تعداد چک‌ها: <b>" +
+      checks.length +
+      "</b> | سود کل تقریبی: <b>" +
+      formatMoney(Math.round(totalProfit)) +
+      "</b> ریال";
+  } catch (e) {
+    box.innerHTML =
+      '<span style="color:#fecaca;">' + e.message + "</span>";
+  }
+}
+
+function saveCheck() {
+  try {
+    const type = document.getElementById("checkType").value;
+    let checks;
+    if (type === "single") {
+      checks = buildSingleCheckFromForm();
+    } else {
+      // اگر هنوز UI ساخته نشده باشد، اول بسازیم
+      if (!document.getElementById("monthlyList").children.length) {
+        buildMonthlyUI();
+      }
+      checks = buildMonthlyChecksFromForm();
+    }
+
+    // اضافه به استیت
+    state.checks = state.checks.concat(checks);
+    saveState();
+
+    // ریست فرم
+    document.getElementById("buyerName").value = "";
+    document.getElementById("buyerPhone").value = "";
+    document.getElementById("principal").value = "";
+    document.getElementById("rate").value = "";
+    document.getElementById("startJ").value = "";
+    document.getElementById("endJ").value = "";
+    document.getElementById("singleCode").value = "";
+    document.getElementById("months").value = "";
+    document.getElementById("graceMonths").value = "1";
+    document.getElementById("monthlyList").innerHTML = "";
+    document.getElementById("previewBox").textContent = "";
+
+    updateKPIs();
+    renderManage();
+
+    alert("چک‌ها با موفقیت ذخیره شدند.");
+  } catch (e) {
+    alert("خطا در ذخیره: " + e.message);
+  }
+}
+
+// وقتی تعداد ماه یا تنفس عوض شد، لیست ماهانه را بسازیم
+(function () {
+  const months = document.getElementById("months");
+  const grace = document.getElementById("graceMonths");
+  if (months) months.addEventListener("input", buildMonthlyUI);
+  if (grace) grace.addEventListener("input", buildMonthlyUI);
+})();
