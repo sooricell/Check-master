@@ -588,6 +588,15 @@
           </div>
         </div>
 
+        <!-- مبلغ چک برای چک تکی: فقط نمایشی -->
+        <div class="row" id="singleAmountRow">
+          <div>
+            <label>مبلغ چک (اصل + سود، فقط نمایشی)</label>
+            <input id="singleAmount" class="money-input" data-money="1"
+                   placeholder="پس از محاسبه سود نمایش داده می‌شود" readonly>
+          </div>
+        </div>
+
         <div class="row">
           <div>
             <label>تاریخ صدور (جلالی - yy/mm/dd)</label>
@@ -726,7 +735,7 @@
         <div class="tiny">
           <div>مدیریت چک و سود روزانه/ماهانه با تاریخ جلالی (۳۰ روزه ثابت).</div>
           <div>Developer: <b>Soroush</b></div>
-          <div>نسخه: 4.6 (Jalali + Profit + PWA)</div>
+          <div>نسخه: 4.5 (Jalali + Profit + PWA)</div>
         </div>
       </div>
     </section>
@@ -809,7 +818,7 @@
         <div class="row">
           <div>
             <label>مبلغ چک (تومان، فقط نمایشی)</label>
-            <input id="editAmount" class="money-input" data-money="1">
+            <input id="editAmount" class="money-input" data-money="1" readonly>
           </div>
           <div>
             <label>درصد سود ماهانه (%)</label>
