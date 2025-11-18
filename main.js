@@ -210,6 +210,40 @@ function switchTab(ev) {
 
 // ================== Input handlers ==================
 
+// محاسبه و نمایش «مبلغ چک» برای چک تکی در فرم افزودن
+function updateSingleAmountFromForm() {
+  const typeSelect = document.getElementById("checkType");
+  const singleAmountInput = document.getElementById("singleAmount");
+  if (!singleAmountInput || !typeSelect) return;
+
+  if (typeSelect.value !== "single") {
+    singleAmountInput.value = "";
+    return;
+  }
+
+  const principal = parseMoney(document.getElementById("principal").value);
+  const rate = Number(toEnglishDigits(document.getElementById("rate").value));
+  const startJStr = document.getElementById("startJ").value;
+  const endJStr = document.getElementById("endJ").value;
+  const startJ = parseJalali(startJStr);
+  const endJ = parseJalali(endJStr);
+
+  if (!principal || principal <= 0 || !rate || rate <= 0 || !startJ || !endJ) {
+    singleAmountInput.value = "";
+    return;
+  }
+
+  const days = diffJalaliDays(startJ, endJ);
+  if (days <= 0) {
+    singleAmountInput.value = "";
+    return;
+  }
+
+  const baseProfit = principal * (rate / 100) * (days / 30);
+  const totalPay = principal + baseProfit;
+  singleAmountInput.value = formatMoney(Math.round(totalPay));
+}
+
 function setupInputHandlers() {
   const doc = document;
 
@@ -240,6 +274,11 @@ function setupInputHandlers() {
     } else if (el.classList.contains("code-16")) {
       el.value = onlyDigits(el.value).slice(0, 16);
     }
+
+    // هر تغییری روی این فیلدها، مبلغ چک تکی را دوباره محاسبه می‌کند
+    if (["principal", "rate", "startJ", "endJ"].includes(el.id)) {
+      updateSingleAmountFromForm();
+    }
   });
 
   const typeSelect = document.getElementById("checkType");
@@ -269,15 +308,22 @@ function handleCheckTypeChange() {
   const singleExtra = document.getElementById("singleExtra");
   const singleEndWrap = document.getElementById("singleEndWrap");
   const monthlyExtra = document.getElementById("monthlyExtra");
+  const singleAmountRow = document.getElementById("singleAmountRow");
+  const singleAmountInput = document.getElementById("singleAmount");
 
   if (type === "single") {
     singleExtra.classList.remove("hidden");
     singleEndWrap.style.display = "";
     monthlyExtra.classList.add("hidden");
+    if (singleAmountRow) singleAmountRow.classList.remove("hidden");
+    updateSingleAmountFromForm();
   } else {
     singleExtra.classList.add("hidden");
     singleEndWrap.style.display = "none";
     monthlyExtra.classList.remove("hidden");
+    if (singleAmountRow) singleAmountRow.classList.add("hidden");
+    if (singleAmountInput) singleAmountInput.value = "";
+    buildMonthlyUI();
   }
 }
 
@@ -342,6 +388,18 @@ function buildSingleCheckFromForm() {
   const endJ = parseJalali(endJStr);
   if (!endJ) throw new Error("تاریخ سررسید را به صورت yy/mm/dd وارد کن.");
 
+  const days = diffJalaliDays(base.startJ, endJ);
+  if (days <= 0) throw new Error("تاریخ سررسید باید بعد از تاریخ صدور باشد.");
+
+  const baseProfit = base.principal * (base.rate / 100) * (days / 30);
+  const totalPay = base.principal + baseProfit;
+  const amountRounded = Math.round(totalPay);
+
+  const singleAmountInput = document.getElementById("singleAmount");
+  if (singleAmountInput) {
+    singleAmountInput.value = formatMoney(amountRounded);
+  }
+
   const codeRaw = document.getElementById("singleCode").value;
   const codeDigits = onlyDigits(codeRaw);
   if (!codeDigits || codeDigits.length !== 16) {
@@ -362,7 +420,7 @@ function buildSingleCheckFromForm() {
     startJStr: base.startJStr,
     endJ,
     endJStr,
-    amount: base.principal, // مبلغ چک اولیه = اصل + سود بعداً در گزارش دیده می‌شود
+    amount: amountRounded, // مبلغ چک = اصل + سود کل پایه
     code: codeDigits,
     label: "",
     note: "",
@@ -450,12 +508,11 @@ function buildMonthlyChecksFromForm() {
 
     let endJStr = sc.endJStr;
     let endJ = sc.endJ;
-    let amount = sc.amount;
+    let amount = perCheckAmount; // مبلغ هر چک از راس‌گیری، غیر قابل تغییر
     let code = "";
 
     if (row) {
       const endInput = row.querySelector(".m-end");
-      const amtInput = row.querySelector(".m-amount");
       const codeInput = row.querySelector(".m-code");
 
       if (endInput && endInput.value.trim()) {
@@ -464,11 +521,6 @@ function buildMonthlyChecksFromForm() {
           throw new Error("تاریخ سررسید قسط " + sc.index + " نامعتبر است.");
         endJ = parsed;
         endJStr = jalaliToString(parsed);
-      }
-
-      if (amtInput && amtInput.value.trim()) {
-        const v = parseMoney(amtInput.value);
-        if (v > 0) amount = v;
       }
 
       if (!codeInput || !codeInput.value.trim()) {
@@ -527,7 +579,7 @@ function buildMonthlyUI() {
           </div>
           <div>
             <label>مبلغ هر چک (تومان)</label>
-            <input class="money-input m-amount" data-money="1" value="${formatMoney(ch.amount)}">
+            <input class="money-input m-amount" data-money="1" value="${formatMoney(ch.amount)}" readonly>
           </div>
         </div>
         <div class="row">
@@ -644,6 +696,8 @@ function saveCheck() {
     document.getElementById("graceMonths").value = "1";
     document.getElementById("monthlyList").innerHTML = "";
     document.getElementById("previewBox").textContent = "";
+    const singleAmountInput = document.getElementById("singleAmount");
+    if (singleAmountInput) singleAmountInput.value = "";
 
     updateKPIs();
     renderManage();
@@ -1157,7 +1211,6 @@ function applyEdit() {
     ch.code = codeDigits;
     ch.label = document.getElementById("editLabel").value.trim();
     ch.note = document.getElementById("editNote").value.trim();
-    ch.amount = parseMoney(document.getElementById("editAmount").value);
     ch.rate = Number(
       toEnglishDigits(document.getElementById("editRate").value)
     );
@@ -1168,10 +1221,20 @@ function applyEdit() {
     const sJ = parseJalali(sStr);
     const eJ = parseJalali(eStr);
     if (!sJ || !eJ) throw new Error("تاریخ‌ها را به صورت yy/mm/dd وارد کن.");
+    const days = diffJalaliDays(sJ, eJ);
+    if (days <= 0) throw new Error("تاریخ سررسید باید بعد از تاریخ صدور باشد.");
+
     ch.startJ = sJ;
     ch.startJStr = jalaliToString(sJ);
     ch.endJ = eJ;
     ch.endJStr = jalaliToString(eJ);
+
+    // مبلغ چک برای چک تکی همیشه = اصل + سود پایه بر اساس تاریخ‌های فعلی
+    if (ch.type === "single") {
+      const baseProfit = ch.principal * (ch.rate / 100) * (days / 30);
+      const totalPay = ch.principal + baseProfit;
+      ch.amount = Math.round(totalPay);
+    }
 
     saveState();
     updateKPIs();
