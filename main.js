@@ -3,13 +3,19 @@
 function toEnglishDigits(str) {
   if (!str) return "";
   const persian = "۰۱۲۳۴۵۶۷۸۹";
-  const arabic = "٠١٢٢٣٤٥٦٧٨٩".replace("٢","2"); // just in case
+  const arabic = "٠١٢٢٣٤٥٦٧٨٩".replace("٢", "2"); // just in case
   let res = "";
   for (const ch of String(str)) {
     const p = persian.indexOf(ch);
-    if (p !== -1) { res += String(p); continue; }
+    if (p !== -1) {
+      res += String(p);
+      continue;
+    }
     const a = arabic.indexOf(ch);
-    if (a !== -1) { res += String(a); continue; }
+    if (a !== -1) {
+      res += String(a);
+      continue;
+    }
     res += ch;
   }
   return res;
@@ -44,7 +50,7 @@ function parseJalali(str) {
 
 function jalaliToString(j) {
   if (!j) return "";
-  const pad = n => (n < 10 ? "0" + n : String(n));
+  const pad = (n) => (n < 10 ? "0" + n : String(n));
   return pad(j.yy) + "/" + pad(j.mm) + "/" + pad(j.dd);
 }
 
@@ -58,21 +64,6 @@ function jalaliToIndex(j) {
 function diffJalaliDays(j1, j2) {
   if (!j1 || !j2) return 0;
   return jalaliToIndex(j2) - jalaliToIndex(j1);
-}
-
-// اضافه کردن n ماه به تاریخ جلالی (برای سری چک‌های ماهانه)
-function addJalaliMonths(j, add) {
-  let year = 1400 + j.yy;
-  let month = j.mm + add;
-  while (month > 12) {
-    month -= 12;
-    year++;
-  }
-  const monthDays = [31,31,31,31,31,31,30,30,30,30,30,29];
-  let day = j.dd;
-  const maxDay = monthDays[month - 1];
-  if (day > maxDay) day = maxDay;
-  return { yy: year - 1400, mm: month, dd: day };
 }
 
 // بازه‌ی فعال هر چک (با در نظر گرفتن extraDays)
@@ -96,7 +87,7 @@ function todayJalaliApprox() {
   const gm = g.getMonth() + 1;
   const gd = g.getDate();
 
-  const g_d_m = [0,31,59,90,120,151,181,212,243,273,304,334];
+  const g_d_m = [0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
   let jy, jm, jd;
   let gy2 = gy - 1600;
   let gm2 = gm - 1;
@@ -108,7 +99,10 @@ function todayJalaliApprox() {
     Math.floor((gy2 + 399) / 400);
 
   gDayNo += g_d_m[gm2] + gd2;
-  if (gm2 > 1 && ((gy % 4 === 0 && gy % 100 !== 0) || gy % 400 === 0)) {
+  if (
+    gm2 > 1 &&
+    ((gy % 4 === 0 && gy % 100 !== 0) || gy % 400 === 0)
+  ) {
     gDayNo++;
   }
   let jDayNo = gDayNo - 79;
@@ -120,7 +114,9 @@ function todayJalaliApprox() {
     jy += Math.floor((jDayNo - 366) / 365);
     jDayNo = (jDayNo - 366) % 365;
   }
-  const jMonthDays = [31,31,31,31,31,31,30,30,30,30,30,29];
+  const jMonthDays = [
+    31, 31, 31, 31, 31, 31, 30, 30, 30, 30, 30, 29
+  ];
   for (jm = 0; jm < 11 && jDayNo >= jMonthDays[jm]; jm++) {
     jDayNo -= jMonthDays[jm];
   }
@@ -171,7 +167,11 @@ function saveState() {
 }
 
 function genId() {
-  return "c_" + Math.random().toString(36).slice(2, 8) + Date.now().toString(36);
+  return (
+    "c_" +
+    Math.random().toString(36).slice(2, 8) +
+    Date.now().toString(36)
+  );
 }
 
 // ================== Init ==================
@@ -186,7 +186,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
   // ثبت سرویس‌ورکر برای کار آفلاین
   if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("./sw.js").catch(err =>
+    navigator.serviceWorker.register("./sw.js").catch((err) =>
       console.log("SW register error", err)
     );
   }
@@ -196,7 +196,7 @@ window.addEventListener("DOMContentLoaded", () => {
 let lastTouchEnd = 0;
 document.addEventListener(
   "touchend",
-  e => {
+  (e) => {
     const now = Date.now();
     if (now - lastTouchEnd <= 300) e.preventDefault();
     lastTouchEnd = now;
@@ -207,12 +207,12 @@ document.addEventListener(
 // سوییچ تب‌ها
 function switchTab(ev) {
   const targetId = ev.currentTarget.getAttribute("data-target");
-  document.querySelectorAll("section[id^='view-']").forEach(sec =>
-    sec.classList.add("hidden")
-  );
-  document.querySelectorAll(".tab").forEach(t =>
-    t.classList.remove("active")
-  );
+  document
+    .querySelectorAll("section[id^='view-']")
+    .forEach((sec) => sec.classList.add("hidden"));
+  document
+    .querySelectorAll(".tab")
+    .forEach((t) => t.classList.remove("active"));
   document.getElementById(targetId).classList.remove("hidden");
   ev.currentTarget.classList.add("active");
 }
@@ -222,7 +222,7 @@ function switchTab(ev) {
 function setupInputHandlers() {
   const doc = document;
 
-  doc.addEventListener("input", e => {
+  doc.addEventListener("input", (e) => {
     const el = e.target;
 
     if (el.classList.contains("money-input")) {
@@ -234,15 +234,23 @@ function setupInputHandlers() {
     } else if (el.classList.contains("numeric-dec")) {
       let v = toEnglishDigits(el.value).replace(/[^0-9.]/g, "");
       const parts = v.split(".");
-      if (parts.length > 2) v = parts[0] + "." + parts.slice(1).join("");
+      if (parts.length > 2)
+        v = parts[0] + "." + parts.slice(1).join("");
       const m = v.match(/^(\d{0,4})(\.\d{0,2})?/);
       el.value = m ? (m[1] || "") + (m[2] || "") : "";
     } else if (el.classList.contains("jalali-input")) {
       let d = onlyDigits(el.value).slice(0, 6);
       let out = "";
       if (d.length <= 2) out = d;
-      else if (d.length <= 4) out = d.slice(0, 2) + "/" + d.slice(2);
-      else out = d.slice(0, 2) + "/" + d.slice(2, 4) + "/" + d.slice(4);
+      else if (d.length <= 4)
+        out = d.slice(0, 2) + "/" + d.slice(2);
+      else
+        out =
+          d.slice(0, 2) +
+          "/" +
+          d.slice(2, 4) +
+          "/" +
+          d.slice(4);
       el.value = out;
     } else if (el.classList.contains("phone-input")) {
       el.value = onlyDigits(el.value).slice(0, 11);
@@ -296,10 +304,10 @@ function renderRefSelects() {
   const refSelect = document.getElementById("refSelect");
   const editRef = document.getElementById("editRef");
 
-  const fill = sel => {
+  const fill = (sel) => {
     if (!sel) return;
     sel.innerHTML = "";
-    state.referrers.forEach(r => {
+    state.referrers.forEach((r) => {
       const opt = document.createElement("option");
       opt.value = r;
       opt.textContent = r;
@@ -330,16 +338,25 @@ function getFormBaseData() {
   const type = document.getElementById("checkType").value;
   const ref = document.getElementById("refSelect").value || "بدون معرف";
   const buyer = document.getElementById("buyerName").value.trim();
-  const phone = document.getElementById("buyerPhone").value.trim();
-  const principal = parseMoney(document.getElementById("principal").value);
-  const rate = Number(toEnglishDigits(document.getElementById("rate").value));
+  const phone = document
+    .getElementById("buyerPhone")
+    .value.trim();
+  const principal = parseMoney(
+    document.getElementById("principal").value
+  );
+  const rate = Number(
+    toEnglishDigits(document.getElementById("rate").value)
+  );
   const startJStr = document.getElementById("startJ").value;
   const startJ = parseJalali(startJStr);
 
   if (!buyer) throw new Error("نام خریدار خالی است.");
-  if (!principal || principal <= 0) throw new Error("مبلغ اصل را درست وارد کن.");
-  if (!rate || rate <= 0) throw new Error("درصد سود را درست وارد کن.");
-  if (!startJ) throw new Error("تاریخ صدور را به صورت yy/mm/dd وارد کن.");
+  if (!principal || principal <= 0)
+    throw new Error("مبلغ اصل را درست وارد کن.");
+  if (!rate || rate <= 0)
+    throw new Error("درصد سود را درست وارد کن.");
+  if (!startJ)
+    throw new Error("تاریخ صدور را به صورت yy/mm/dd وارد کن.");
 
   return { type, ref, buyer, phone, principal, rate, startJ, startJStr };
 }
@@ -348,7 +365,8 @@ function buildSingleCheckFromForm() {
   const base = getFormBaseData();
   const endJStr = document.getElementById("endJ").value;
   const endJ = parseJalali(endJStr);
-  if (!endJ) throw new Error("تاریخ سررسید را به صورت yy/mm/dd وارد کن.");
+  if (!endJ)
+    throw new Error("تاریخ سررسید را به صورت yy/mm/dd وارد کن.");
   const code = document.getElementById("singleCode").value.trim();
 
   const check = {
@@ -377,12 +395,15 @@ function buildSingleCheckFromForm() {
   return [check];
 }
 
-// ساخت برنامه‌ی سری چک‌های ماهانه (فقط تاریخ‌ها و اصل هر چک)
-function buildMonthlyBaseChecks() {
+function buildMonthlyChecksFromForm() {
   const base = getFormBaseData();
-  const months = Number(toEnglishDigits(document.getElementById("months").value));
+  const months = Number(
+    toEnglishDigits(document.getElementById("months").value)
+  );
   const graceMonths = Number(
-    toEnglishDigits(document.getElementById("graceMonths").value || "0")
+    toEnglishDigits(
+      document.getElementById("graceMonths").value || "0"
+    )
   );
 
   if (!months || months <= 0 || months > 36)
@@ -390,60 +411,11 @@ function buildMonthlyBaseChecks() {
 
   const seriesId = genId();
   const checks = [];
-  const principalPerCheck = Math.round(base.principal / months);
-
-  for (let i = 0; i < months; i++) {
-    const offsetMonths = graceMonths + i; // دقیقا به تعداد ماه
-    const endJ = addJalaliMonths(base.startJ, offsetMonths);
-    const endJStr = jalaliToString(endJ);
-
-    checks.push({
-      id: genId(),
-      type: "monthly",
-      seriesId,
-      index: i + 1,
-      ref: base.ref,
-      buyer: base.buyer,
-      phone: base.phone,
-      principal: principalPerCheck, // اصل هر چک = اصل کل / تعداد ماه
-      rate: base.rate,
-      startJ: base.startJ,
-      startJStr: base.startJStr,
-      endJ,
-      endJStr,
-      amount: principalPerCheck, // نمایش
-      code: "",
-      label: "",
-      note: "",
-      status: "unpaid",
-      extraDays: 0,
-      extraProfit: 0
-    });
-  }
-
-  return checks;
-}
-
-function buildMonthlyChecksFromForm() {
-  const base = getFormBaseData();
-  const months = Number(toEnglishDigits(document.getElementById("months").value));
-  const graceMonths = Number(
-    toEnglishDigits(document.getElementById("graceMonths").value || "0")
-  );
-
-  if (!months || months <= 0 || months > 36)
-    throw new Error("تعداد ماه باید بین 1 تا 36 باشد.");
-
-  const schedule = buildMonthlyBaseChecks();
-  const principalPerCheck = schedule[0].principal;
-  const seriesId = schedule[0].seriesId;
-
-  const checks = [];
   const monthlyList = document.getElementById("monthlyList");
   const rows = monthlyList.querySelectorAll("[data-month-index]");
 
   if (rows.length > 0) {
-    rows.forEach(row => {
+    rows.forEach((row) => {
       const idx = Number(row.getAttribute("data-month-index"));
       const endJInput = row.querySelector(".m-end");
       const codeInput = row.querySelector(".m-code");
@@ -455,7 +427,7 @@ function buildMonthlyChecksFromForm() {
         throw new Error("تاریخ سررسید قسط " + idx + " نامعتبر است.");
 
       const code = codeInput.value.trim();
-      const amount = parseMoney(amtInput.value) || principalPerCheck;
+      const amount = parseMoney(amtInput.value);
 
       checks.push({
         id: genId(),
@@ -465,7 +437,7 @@ function buildMonthlyChecksFromForm() {
         ref: base.ref,
         buyer: base.buyer,
         phone: base.phone,
-        principal: principalPerCheck, // برای سود همین را استفاده می‌کنیم
+        principal: base.principal,
         rate: base.rate,
         startJ: base.startJ,
         startJStr: base.startJStr,
@@ -483,35 +455,71 @@ function buildMonthlyChecksFromForm() {
     return checks;
   }
 
-  // اگر به هر دلیلی UI ساخته نشده باشد، از schedule استفاده می‌کنیم
-  return schedule;
+  // اگر UI ساخته نشده باشد، خودمان تاریخ‌ها را می‌سازیم (هر ماه = ۳۰ روز)
+  const baseIndex = jalaliToIndex(base.startJ);
+  for (let i = 0; i < months; i++) {
+    const monthOffset = graceMonths + i;
+    const endIndex = baseIndex + monthOffset * 30;
+    const totalMonths = Math.floor(endIndex / 30);
+    const dayInMonth = (endIndex % 30) + 1;
+    const year = Math.floor(totalMonths / 12);
+    const month = (totalMonths % 12) + 1;
+    const jy = year - 1400;
+    const endJ = { yy: jy, mm: month, dd: dayInMonth };
+    const endJStr = jalaliToString(endJ);
+
+    checks.push({
+      id: genId(),
+      type: "monthly",
+      seriesId,
+      index: i + 1,
+      ref: base.ref,
+      buyer: base.buyer,
+      phone: base.phone,
+      principal: base.principal,
+      rate: base.rate,
+      startJ: base.startJ,
+      startJStr: base.startJStr,
+      endJ,
+      endJStr,
+      amount: 0,
+      code: "",
+      label: "",
+      note: "",
+      status: "unpaid",
+      extraDays: 0,
+      extraProfit: 0
+    });
+  }
+
+  return checks;
 }
 
 function buildMonthlyUI() {
   const list = document.getElementById("monthlyList");
   if (!list) return;
   try {
-    const checks = buildMonthlyBaseChecks(); // فقط برای نمایش
+    const checks = buildMonthlyChecksFromForm();
     list.innerHTML = "";
-    checks.forEach(ch => {
+    checks.forEach((ch) => {
       const row = document.createElement("div");
       row.className = "check-card";
       row.setAttribute("data-month-index", String(ch.index));
       row.innerHTML = `
         <div class="row">
           <div>
-            <label>قسط ${ch.index} - شناسه ۱۶ رقمی</label>
-            <input class="code-16 m-code" maxlength="16" inputmode="numeric" placeholder="فقط عدد">
+            <label>قسط ${ch.index} - تاریخ سررسید (جلالی)</label>
+            <input class="jalali-input m-end" value="${ch.endJStr}">
           </div>
           <div>
-            <label>تاریخ سررسید (جلالی)</label>
-            <input class="jalali-input m-end" value="${ch.endJStr}">
+            <label>شناسه ۱۶ رقمی</label>
+            <input class="code-16 m-code" maxlength="16" inputmode="numeric" placeholder="فقط عدد">
           </div>
         </div>
         <div class="row">
           <div>
-            <label>مبلغ چک (تومان)</label>
-            <input class="money-input m-amount" data-money="1" value="${formatMoney(ch.amount)}" readonly>
+            <label>مبلغ چک (نمایشی - تومان)</label>
+            <input class="money-input m-amount" data-money="1" placeholder="مثلاً 26,000,000">
           </div>
         </div>
       `;
@@ -519,13 +527,16 @@ function buildMonthlyUI() {
     });
   } catch (e) {
     list.innerHTML =
-      '<div class="tiny" style="color:#fecaca;">' + e.message + "</div>";
+      '<div class="tiny" style="color:#fecaca;">' +
+      e.message +
+      "</div>";
   }
 }
 
 // ================== Profit calculations ==================
 
 function calcProfitForCheck(ch) {
+  // بر اساس بازه‌ی صدور تا سررسید (به‌همراه extraDays)
   const range = getCheckRange(ch);
   const days = range.end - range.start;
   const extra = ch.extraProfit || 0;
@@ -553,7 +564,7 @@ function previewCalc() {
         : buildMonthlyChecksFromForm();
 
     let totalProfit = 0;
-    checks.forEach(ch => {
+    checks.forEach((ch) => {
       totalProfit += calcProfitForCheck(ch).total;
     });
 
@@ -609,7 +620,10 @@ function updateFutureDaysLabel() {
 }
 
 function changeFutureDays() {
-  const v = prompt("چند روز آینده را ببینیم؟", String(state.futureDays));
+  const v = prompt(
+    "چند روز آینده را ببینیم؟",
+    String(state.futureDays)
+  );
   if (!v) return;
   const n = Number(toEnglishDigits(v));
   if (!n || n < 1 || n > 365) {
@@ -642,17 +656,24 @@ function updateKPIs() {
   let overdue = 0;
   let paid = 0;
 
-  state.checks.forEach(ch => {
-    const r = getCheckRange(ch);
+  state.checks.forEach((ch) => {
     const full = calcProfitForCheck(ch);
     totalBase += full.base;
     totalExtra += full.extra;
 
+    // سود روز و ماه: می‌توانند شامل چک‌های پرداخت‌شده هم باشند (گذشته)
     const daily = intervalProfit(ch, todayIdx, todayIdx + 1);
     todayProfit += daily;
-
     monthProfit += intervalProfit(ch, monthStartIdx, monthEndIdx);
-    futureProfit += intervalProfit(ch, futureStartIdx, futureEndIdx);
+
+    // سود آینده: فقط چک‌های فعال (پرداخت‌نشده)
+    if (ch.status !== "paid") {
+      futureProfit += intervalProfit(
+        ch,
+        futureStartIdx,
+        futureEndIdx
+      );
+    }
 
     const dueIdx = jalaliToIndex(ch.endJ);
     const diffToDue = dueIdx - todayIdx;
@@ -666,14 +687,14 @@ function updateKPIs() {
     }
   });
 
-  const set = (id, val) => {
+  const setMoney = (id, val) => {
     const el = document.getElementById(id);
     if (el) el.textContent = formatMoney(Math.round(val));
   };
 
-  set("kpiToday", todayProfit);
-  set("kpiMonth", monthProfit);
-  set("kpiNext30", futureProfit);
+  setMoney("kpiToday", todayProfit);
+  setMoney("kpiMonth", monthProfit);
+  setMoney("kpiNext30", futureProfit);
 
   const elA = document.getElementById("kpiActive");
   const elN = document.getElementById("kpiNear");
@@ -684,9 +705,9 @@ function updateKPIs() {
   if (elO) elO.textContent = String(overdue);
   if (elP) elP.textContent = String(paid);
 
-  set("kpiTotalProfitBase", totalBase);
-  set("kpiExtendedProfit", totalExtra);
-  set("kpiTotalProfit", totalBase + totalExtra);
+  setMoney("kpiTotalProfitBase", totalBase);
+  setMoney("kpiExtendedProfit", totalExtra);
+  setMoney("kpiTotalProfit", totalBase + totalExtra);
 }
 
 // ================== Manage list ==================
@@ -700,7 +721,8 @@ function getStatusInfo(ch) {
     return { cls: "st-paid", text: "پرداخت‌شده" };
   }
   if (diffToDue < 0) return { cls: "st-overdue", text: "معوق" };
-  if (diffToDue <= 10) return { cls: "st-near", text: "نزدیک سررسید" };
+  if (diffToDue <= 10)
+    return { cls: "st-near", text: "نزدیک سررسید" };
   return { cls: "st-unpaid", text: "فعال" };
 }
 
@@ -709,21 +731,28 @@ function renderManage() {
   if (!list) return;
 
   const mode = document.getElementById("manageMode").value;
-  const statusFilter = document.getElementById("statusFilter").value;
-  const search = (document.getElementById("searchInput").value || "")
+  const statusFilter =
+    document.getElementById("statusFilter").value;
+  const search = (
+    document.getElementById("searchInput").value || ""
+  )
     .toLowerCase()
     .trim();
 
-  const fromJ = parseJalali(document.getElementById("fromJ").value);
+  const fromJ = parseJalali(
+    document.getElementById("fromJ").value
+  );
   const toJ = parseJalali(document.getElementById("toJ").value);
   const fromIdx = fromJ ? jalaliToIndex(fromJ) : null;
   const toIdx = toJ ? jalaliToIndex(toJ) : null;
 
   let filtered = state.checks.slice();
 
-  filtered = filtered.filter(ch => {
-    if (statusFilter === "paid" && ch.status !== "paid") return false;
-    if (statusFilter === "unpaid" && ch.status === "paid") return false;
+  filtered = filtered.filter((ch) => {
+    if (statusFilter === "paid" && ch.status !== "paid")
+      return false;
+    if (statusFilter === "unpaid" && ch.status === "paid")
+      return false;
 
     if (fromIdx !== null || toIdx !== null) {
       const d = jalaliToIndex(ch.endJ);
@@ -742,8 +771,7 @@ function renderManage() {
         (ch.label || "") +
         " " +
         (ch.phone || "")
-      )
-        .toLowerCase();
+      ).toLowerCase();
       if (!hay.includes(search)) return false;
     }
     return true;
@@ -759,15 +787,18 @@ function renderManage() {
 
   if (mode === "folders") {
     const byRef = new Map();
-    filtered.forEach(ch => {
-      if (!byRef.has(ch.ref)) byRef.set(ch.ref, []);
-      byRef.get(ch.ref).push(ch);
+    filtered.forEach((ch) => {
+      const key = ch.ref || "بدون معرف";
+      if (!byRef.has(key)) byRef.set(key, []);
+      byRef.get(key).push(ch);
     });
 
     byRef.forEach((checks, ref) => {
       const folder = document.createElement("div");
       folder.className = "folder";
-      const unpaidCount = checks.filter(c => c.status !== "paid").length;
+      const unpaidCount = checks.filter(
+        (c) => c.status !== "paid"
+      ).length;
       const paidCount = checks.length - unpaidCount;
       folder.innerHTML = `
         <div class="folder-main">
@@ -781,13 +812,17 @@ function renderManage() {
       list.appendChild(folder);
 
       checks
-        .sort((a, b) => jalaliToIndex(a.endJ) - jalaliToIndex(b.endJ))
-        .forEach(ch => list.appendChild(buildCheckCard(ch)));
+        .sort(
+          (a, b) => jalaliToIndex(a.endJ) - jalaliToIndex(b.endJ)
+        )
+        .forEach((ch) => list.appendChild(buildCheckCard(ch)));
     });
   } else {
     filtered
-      .sort((a, b) => jalaliToIndex(a.endJ) - jalaliToIndex(b.endJ))
-      .forEach(ch => list.appendChild(buildCheckCard(ch)));
+      .sort(
+        (a, b) => jalaliToIndex(a.endJ) - jalaliToIndex(b.endJ)
+      )
+      .forEach((ch) => list.appendChild(buildCheckCard(ch)));
   }
 }
 
@@ -802,15 +837,25 @@ function buildCheckCard(ch) {
       <div>
         <div><b>${ch.buyer}</b> – <span class="tiny">${ch.ref}</span></div>
         <div class="tiny">
-          سررسید: ${ch.endJStr} | اصل: ${formatMoney(ch.principal)} | سود کل: ${formatMoney(Math.round(p.total))}
+          سررسید: ${ch.endJStr} | اصل: ${formatMoney(
+    ch.principal
+  )} | سود کل: ${formatMoney(Math.round(p.total))} تومان
         </div>
       </div>
       <div class="status-pill ${st.cls}">${st.text}</div>
     </div>
     <div class="check-actions">
-      <button class="small" onclick="openEdit('${ch.id}')">ویرایش / تمدید</button>
-      <button class="small" onclick="togglePaid('${ch.id}')">
-        ${ch.status === "paid" ? "برگردان به فعال" : "علامت به پرداخت‌شده"}
+      <button class="small" onclick="openEdit('${
+        ch.id
+      }')">ویرایش / تمدید</button>
+      <button class="small" onclick="togglePaid('${
+        ch.id
+      }')">
+        ${
+          ch.status === "paid"
+            ? "برگردان به فعال"
+            : "علامت به پرداخت‌شده"
+        }
       </button>
     </div>
   `;
@@ -834,7 +879,7 @@ function clearFilters() {
 }
 
 function togglePaid(id) {
-  const ch = state.checks.find(c => c.id === id);
+  const ch = state.checks.find((c) => c.id === id);
   if (!ch) return;
   ch.status = ch.status === "paid" ? "unpaid" : "paid";
   saveState();
@@ -859,66 +904,90 @@ function openDetail(kind) {
   const futureEndIdx = todayIdx + state.futureDays;
 
   let checks = [];
-  let profitFn = () => 0;
+  let profitFn = null;
 
   if (kind === "today") {
     title.textContent = "سود امروز";
-    profitFn = ch => intervalProfit(ch, todayIdx, todayIdx + 1);
+    profitFn = (ch) =>
+      ch.status === "paid"
+        ? 0
+        : intervalProfit(ch, todayIdx, todayIdx + 1);
     checks = state.checks.slice();
   } else if (kind === "month") {
     title.textContent = "سود ماه جاری";
-    profitFn = ch => intervalProfit(ch, monthStartIdx, monthEndIdx);
+    profitFn = (ch) =>
+      ch.status === "paid"
+        ? 0
+        : intervalProfit(ch, monthStartIdx, monthEndIdx);
     checks = state.checks.slice();
   } else if (kind === "next30") {
     title.textContent = `سود ${state.futureDays} روز آینده`;
-    profitFn = ch => intervalProfit(ch, futureStartIdx, futureEndIdx);
+    profitFn = (ch) =>
+      ch.status === "paid"
+        ? 0
+        : intervalProfit(ch, futureStartIdx, futureEndIdx);
     checks = state.checks.slice();
   } else if (kind === "active") {
     title.textContent = "چک‌های فعال";
-    checks = state.checks.filter(c => c.status !== "paid");
+    checks = state.checks.filter((c) => c.status !== "paid");
   } else if (kind === "near") {
     title.textContent = "نزدیک سررسید (۱۰ روز)";
-    checks = state.checks.filter(c => {
+    checks = state.checks.filter((c) => {
       const d = jalaliToIndex(c.endJ) - todayIdx;
       return c.status !== "paid" && d >= 0 && d <= 10;
     });
   } else if (kind === "overdue") {
     title.textContent = "چک‌های معوق";
-    checks = state.checks.filter(c => {
+    checks = state.checks.filter((c) => {
       const d = jalaliToIndex(c.endJ) - todayIdx;
       return c.status !== "paid" && d < 0;
     });
   } else if (kind === "paid") {
     title.textContent = "چک‌های پرداخت‌شده";
-    checks = state.checks.filter(c => c.status === "paid");
+    checks = state.checks.filter((c) => c.status === "paid");
   }
 
   let totalProfit = 0;
   let totalPrincipal = 0;
 
   if (profitFn) {
-    checks.forEach(ch => {
-      totalProfit += profitFn(ch);
-      totalPrincipal += ch.principal || 0;
+    checks.forEach((ch) => {
+      const p = profitFn(ch);
+      if (p > 0) {
+        totalProfit += p;
+        totalPrincipal += ch.principal;
+      }
+    });
+  } else {
+    // active/near/overdue/paid → سود کل هر چک
+    checks.forEach((ch) => {
+      const full = calcProfitForCheck(ch);
+      totalProfit += full.total;
+      totalPrincipal += ch.principal;
     });
   }
 
-  const totalAll = totalPrincipal + totalProfit;
-
-  let html = `<div class="tiny">تعداد چک‌ها: ${checks.length} | جمع سود این بخش: ${formatMoney(
-    Math.round(totalProfit)
-  )} تومان | جمع اصل: ${formatMoney(
-    Math.round(totalPrincipal)
-  )} تومان | جمع کل (اصل + سود): ${formatMoney(
-    Math.round(totalAll)
-  )} تومان</div><div class="sep"></div>`;
+  let html = "";
+  html += `<div class="tiny">
+    تعداد چک‌ها: ${checks.length}
+    | جمع اصل: ${formatMoney(
+      Math.round(totalPrincipal)
+    )} تومان
+    | جمع سود: ${formatMoney(Math.round(totalProfit))} تومان
+    | جمع کل: ${formatMoney(
+      Math.round(totalPrincipal + totalProfit)
+    )} تومان
+  </div>
+  <div class="sep"></div>`;
 
   if (!checks.length) {
     html += '<div class="tiny">چکی در این بخش وجود ندارد.</div>';
   } else {
     checks
-      .sort((a, b) => jalaliToIndex(a.endJ) - jalaliToIndex(b.endJ))
-      .forEach(ch => {
+      .sort(
+        (a, b) => jalaliToIndex(a.endJ) - jalaliToIndex(b.endJ)
+      )
+      .forEach((ch) => {
         const p = calcProfitForCheck(ch);
         const st = getStatusInfo(ch);
         html += `
@@ -930,7 +999,11 @@ function openDetail(kind) {
                   صدور: ${ch.startJStr} | سررسید: ${ch.endJStr}
                 </div>
                 <div class="tiny">
-                  اصل: ${formatMoney(ch.principal)} | سود کل: ${formatMoney(Math.round(p.total))} تومان
+                  اصل: ${formatMoney(
+                    ch.principal
+                  )} تومان | سود کل: ${formatMoney(
+          Math.round(p.total)
+        )} تومان
                 </div>
               </div>
               <div class="status-pill ${st.cls}">${st.text}</div>
@@ -952,7 +1025,7 @@ function closeDetail() {
 // ================== Edit / extend overlay ==================
 
 function openEdit(id) {
-  const ch = state.checks.find(c => c.id === id);
+  const ch = state.checks.find((c) => c.id === id);
   if (!ch) return;
   const back = document.getElementById("editBack");
   if (!back) return;
@@ -991,18 +1064,31 @@ function closeEdit() {
 function applyEdit() {
   try {
     const id = document.getElementById("editId").value;
-    const ch = state.checks.find(c => c.id === id);
+    const ch = state.checks.find((c) => c.id === id);
     if (!ch) return;
 
-    ch.buyer = document.getElementById("editBuyer").value.trim();
-    ch.ref = document.getElementById("editRef").value || "بدون معرف";
-    ch.phone = document.getElementById("editPhone").value.trim();
-    ch.code = document.getElementById("editCode").value.trim();
-    ch.label = document.getElementById("editLabel").value.trim();
+    ch.buyer = document
+      .getElementById("editBuyer")
+      .value.trim();
+    ch.ref =
+      document.getElementById("editRef").value || "بدون معرف";
+    ch.phone = document
+      .getElementById("editPhone")
+      .value.trim();
+    ch.code = document
+      .getElementById("editCode")
+      .value.trim();
+    ch.label = document
+      .getElementById("editLabel")
+      .value.trim();
     ch.note = document.getElementById("editNote").value.trim();
-    ch.amount = parseMoney(document.getElementById("editAmount").value);
+    ch.amount = parseMoney(
+      document.getElementById("editAmount").value
+    );
     ch.rate = Number(
-      toEnglishDigits(document.getElementById("editRate").value)
+      toEnglishDigits(
+        document.getElementById("editRate").value
+      )
     );
     ch.status = document.getElementById("editStatus").value;
 
@@ -1010,7 +1096,8 @@ function applyEdit() {
     const eStr = document.getElementById("editEndJ").value;
     const sJ = parseJalali(sStr);
     const eJ = parseJalali(eStr);
-    if (!sJ || !eJ) throw new Error("تاریخ‌ها را به صورت yy/mm/dd وارد کن.");
+    if (!sJ || !eJ)
+      throw new Error("تاریخ‌ها را به صورت yy/mm/dd وارد کن.");
     ch.startJ = sJ;
     ch.startJStr = jalaliToString(sJ);
     ch.endJ = eJ;
@@ -1028,19 +1115,22 @@ function applyEdit() {
 function extendCheck() {
   try {
     const id = document.getElementById("editId").value;
-    const ch = state.checks.find(c => c.id === id);
+    const ch = state.checks.find((c) => c.id === id);
     if (!ch) return;
 
     const newEndStr = document.getElementById("editEndJ").value;
     const newEndJ = parseJalali(newEndStr);
-    if (!newEndJ) throw new Error("تاریخ سررسید جدید معتبر نیست.");
+    if (!newEndJ)
+      throw new Error("تاریخ سررسید جدید معتبر نیست.");
 
     const oldEndIdx = jalaliToIndex(ch.endJ);
     const newEndIdx = jalaliToIndex(newEndJ);
     const diff = newEndIdx - oldEndIdx;
-    if (diff <= 0) throw new Error("تاریخ جدید باید بعد از تاریخ قبلی باشد.");
+    if (diff <= 0)
+      throw new Error("تاریخ جدید باید بعد از تاریخ قبلی باشد.");
 
-    const addProfit = ch.principal * (ch.rate / 100) * (diff / 30);
+    const addProfit =
+      ch.principal * (ch.rate / 100) * (diff / 30);
 
     ch.endJ = newEndJ;
     ch.endJStr = jalaliToString(newEndJ);
@@ -1053,9 +1143,8 @@ function extendCheck() {
     renderManage();
 
     const p = calcProfitForCheck(ch);
-    document.getElementById("editProfitDisplay").value = formatMoney(
-      Math.round(p.total)
-    );
+    document.getElementById("editProfitDisplay").value =
+      formatMoney(Math.round(p.total));
 
     alert("تمدید با موفقیت ثبت شد.");
   } catch (e) {
@@ -1090,13 +1179,17 @@ function exportCSV() {
     "extraDays",
     "extraProfit"
   ];
-  const rows = state.checks.map(ch =>
+  const rows = state.checks.map((ch) =>
     header
-      .map(k => String(ch[k] !== undefined ? ch[k] : ""))
+      .map((k) =>
+        String(ch[k] !== undefined ? ch[k] : "")
+      )
       .join(",")
   );
   const csv = [header.join(","), ...rows].join("\n");
-  const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+  const blob = new Blob([csv], {
+    type: "text/csv;charset=utf-8;"
+  });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -1109,7 +1202,9 @@ function exportCSV() {
 
 function exportJSON() {
   const data = JSON.stringify(state, null, 2);
-  const blob = new Blob([data], { type: "application/json" });
+  const blob = new Blob([data], {
+    type: "application/json"
+  });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
