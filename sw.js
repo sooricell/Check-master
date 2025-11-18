@@ -1,4 +1,4 @@
-const CACHE_NAME = "checkmaster-v5.0";
+const CACHE_NAME = "checkmaster-v4.8";
 const ASSETS = [
   "./",
   "./index.html",
