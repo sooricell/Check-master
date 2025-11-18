@@ -3,13 +3,19 @@
 function toEnglishDigits(str) {
   if (!str) return "";
   const persian = "۰۱۲۳۴۵۶۷۸۹";
-  const arabic = "٠١٢٢٣٤٥٦٧٨٩".replace("٢","2"); // just in case
+  const arabic = "٠١٢٣٤٥٦٧٨٩";
   let res = "";
   for (const ch of String(str)) {
     const p = persian.indexOf(ch);
-    if (p !== -1) { res += String(p); continue; }
+    if (p !== -1) {
+      res += String(p);
+      continue;
+    }
     const a = arabic.indexOf(ch);
-    if (a !== -1) { res += String(a); continue; }
+    if (a !== -1) {
+      res += String(a);
+      continue;
+    }
     res += ch;
   }
   return res;
@@ -169,7 +175,6 @@ window.addEventListener("DOMContentLoaded", () => {
   updateKPIs();
   renderManage();
 
-  // ثبت سرویس‌ورکر برای کار آفلاین
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js").catch(err =>
       console.log("SW register error", err)
@@ -362,6 +367,7 @@ function buildSingleCheckFromForm() {
   return [check];
 }
 
+// چک‌های ماهانه
 function buildMonthlyChecksFromForm() {
   const base = getFormBaseData();
   const months = Number(toEnglishDigits(document.getElementById("months").value));
@@ -377,8 +383,29 @@ function buildMonthlyChecksFromForm() {
   const monthlyList = document.getElementById("monthlyList");
   const rows = monthlyList.querySelectorAll("[data-month-index]");
 
+  // اگر کاربر لیست را ویرایش کرده، از روی UI بخوانیم
   if (rows.length > 0) {
-    rows.forEach(row => {
+    // start قسط اول = تاریخ شروع پایه + ماه‌های تنفس
+    let currentStart = (() => {
+      const baseIdx = jalaliToIndex(base.startJ);
+      const startIdx = baseIdx + graceMonths * 30;
+      const totalMonths = Math.floor(startIdx / 30);
+      const dayInMonth = (startIdx % 30) + 1;
+      const year = Math.floor(totalMonths / 12);
+      const month = (totalMonths % 12) + 1;
+      const jy = year - 1400;
+      const sJ = { yy: jy, mm: month, dd: dayInMonth };
+      return sJ;
+    })();
+
+    // ردیف‌ها را بر اساس index مرتب کنیم
+    const sortedRows = Array.from(rows).sort(
+      (a, b) =>
+        Number(a.getAttribute("data-month-index")) -
+        Number(b.getAttribute("data-month-index"))
+    );
+
+    sortedRows.forEach(row => {
       const idx = Number(row.getAttribute("data-month-index"));
       const endJInput = row.querySelector(".m-end");
       const codeInput = row.querySelector(".m-code");
@@ -392,6 +419,9 @@ function buildMonthlyChecksFromForm() {
       const code = codeInput.value.trim();
       const amount = parseMoney(amtInput.value);
 
+      const startJ = currentStart;
+      const startJStr = jalaliToString(startJ);
+
       checks.push({
         id: genId(),
         type: "monthly",
@@ -402,8 +432,8 @@ function buildMonthlyChecksFromForm() {
         phone: base.phone,
         principal: base.principal,
         rate: base.rate,
-        startJ: base.startJ,
-        startJStr: base.startJStr,
+        startJ,
+        startJStr,
         endJ,
         endJStr,
         amount,
@@ -414,21 +444,34 @@ function buildMonthlyChecksFromForm() {
         extraDays: 0,
         extraProfit: 0
       });
+
+      // start قسط بعد = end همین قسط
+      currentStart = endJ;
     });
+
     return checks;
   }
 
-  // اگر UI ساخته نشده باشد، خودمان تاریخ‌ها را می‌سازیم
-  const baseIndex = jalaliToIndex(base.startJ);
+  // اگر UI هنوز ساخته نشده، خودمان تاریخ‌ها را بسازیم (هر قسط ۳۰ روز)
+  const baseIdx = jalaliToIndex(base.startJ);
+  let startIdx = baseIdx + graceMonths * 30;
+
   for (let i = 0; i < months; i++) {
-    const monthOffset = graceMonths + i;
-    const endIndex = baseIndex + monthOffset * 30;
-    const totalMonths = Math.floor(endIndex / 30);
-    const dayInMonth = (endIndex % 30) + 1;
-    const year = Math.floor(totalMonths / 12);
-    const month = (totalMonths % 12) + 1;
-    const jy = year - 1400;
-    const endJ = { yy: jy, mm: month, dd: dayInMonth };
+    const endIdx = startIdx + 30;
+    const totalMonthsStart = Math.floor(startIdx / 30);
+    const dayInMonthStart = (startIdx % 30) + 1;
+    const yearStart = Math.floor(totalMonthsStart / 12);
+    const monthStart = (totalMonthsStart % 12) + 1;
+    const jyStart = yearStart - 1400;
+    const startJ = { yy: jyStart, mm: monthStart, dd: dayInMonthStart };
+    const startJStr = jalaliToString(startJ);
+
+    const totalMonthsEnd = Math.floor(endIdx / 30);
+    const dayInMonthEnd = (endIdx % 30) + 1;
+    const yearEnd = Math.floor(totalMonthsEnd / 12);
+    const monthEnd = (totalMonthsEnd % 12) + 1;
+    const jyEnd = yearEnd - 1400;
+    const endJ = { yy: jyEnd, mm: monthEnd, dd: dayInMonthEnd };
     const endJStr = jalaliToString(endJ);
 
     checks.push({
@@ -441,8 +484,8 @@ function buildMonthlyChecksFromForm() {
       phone: base.phone,
       principal: base.principal,
       rate: base.rate,
-      startJ: base.startJ,
-      startJStr: base.startJStr,
+      startJ,
+      startJStr,
       endJ,
       endJStr,
       amount: 0,
@@ -453,44 +496,76 @@ function buildMonthlyChecksFromForm() {
       extraDays: 0,
       extraProfit: 0
     });
+
+    startIdx = endIdx; // شروع قسط بعدی
   }
 
   return checks;
 }
 
+// ساخت UI چک‌های ماهانه (فقط ظاهر)
 function buildMonthlyUI() {
   const list = document.getElementById("monthlyList");
   if (!list) return;
+
+  list.innerHTML = "";
+  let base;
   try {
-    const checks = buildMonthlyChecksFromForm();
-    list.innerHTML = "";
-    checks.forEach(ch => {
-      const row = document.createElement("div");
-      row.className = "check-card";
-      row.setAttribute("data-month-index", String(ch.index));
-      row.innerHTML = `
-        <div class="row">
-          <div>
-            <label>قسط ${ch.index} - تاریخ سررسید (جلالی)</label>
-            <input class="jalali-input m-end" value="${ch.endJStr}">
-          </div>
-          <div>
-            <label>شناسه ۱۶ رقمی</label>
-            <input class="code-16 m-code" maxlength="16" inputmode="numeric" placeholder="فقط عدد">
-          </div>
-        </div>
-        <div class="row">
-          <div>
-            <label>مبلغ چک (نمایشی)</label>
-            <input class="money-input m-amount" data-money="1" placeholder="مثلاً 120,000,000">
-          </div>
-        </div>
-      `;
-      list.appendChild(row);
-    });
+    base = getFormBaseData();
   } catch (e) {
     list.innerHTML =
       '<div class="tiny" style="color:#fecaca;">' + e.message + "</div>";
+    return;
+  }
+
+  const months = Number(toEnglishDigits(document.getElementById("months").value));
+  const graceMonths = Number(
+    toEnglishDigits(document.getElementById("graceMonths").value || "0")
+  );
+
+  if (!months || months <= 0 || months > 36) {
+    list.innerHTML =
+      '<div class="tiny" style="color:#fecaca;">تعداد ماه بین ۱ تا ۳۶ باشد.</div>';
+    return;
+  }
+
+  const baseIdx = jalaliToIndex(base.startJ);
+  let startIdx = baseIdx + graceMonths * 30;
+
+  for (let i = 0; i < months; i++) {
+    const endIdx = startIdx + 30;
+    const totalMonthsEnd = Math.floor(endIdx / 30);
+    const dayInMonthEnd = (endIdx % 30) + 1;
+    const yearEnd = Math.floor(totalMonthsEnd / 12);
+    const monthEnd = (totalMonthsEnd % 12) + 1;
+    const jyEnd = yearEnd - 1400;
+    const endJ = { yy: jyEnd, mm: monthEnd, dd: dayInMonthEnd };
+    const endJStr = jalaliToString(endJ);
+
+    const row = document.createElement("div");
+    row.className = "check-card";
+    row.setAttribute("data-month-index", String(i + 1));
+    row.innerHTML = `
+      <div class="row">
+        <div>
+          <label>قسط ${i + 1} - تاریخ سررسید (جلالی)</label>
+          <input class="jalali-input m-end" value="${endJStr}">
+        </div>
+        <div>
+          <label>شناسه ۱۶ رقمی</label>
+          <input class="code-16 m-code" maxlength="16" inputmode="numeric" placeholder="فقط عدد">
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label>مبلغ چک (نمایشی)</label>
+          <input class="money-input m-amount" data-money="1" placeholder="مثلاً 120,000,000">
+        </div>
+      </div>
+    `;
+    list.appendChild(row);
+
+    startIdx = endIdx;
   }
 }
 
@@ -518,7 +593,7 @@ function previewCalc() {
   box.textContent = "";
   try {
     const type = document.getElementById("checkType").value;
-    let checks =
+    const checks =
       type === "single"
         ? buildSingleCheckFromForm()
         : buildMonthlyChecksFromForm();
@@ -543,7 +618,7 @@ function previewCalc() {
 function saveCheck() {
   try {
     const type = document.getElementById("checkType").value;
-    let checks =
+    const checks =
       type === "single"
         ? buildSingleCheckFromForm()
         : buildMonthlyChecksFromForm();
@@ -614,14 +689,11 @@ function updateKPIs() {
   let paid = 0;
 
   state.checks.forEach(ch => {
-    const r = getCheckRange(ch);
     const full = calcProfitForCheck(ch);
     totalBase += full.base;
     totalExtra += full.extra;
 
-    const daily = intervalProfit(ch, todayIdx, todayIdx + 1);
-    todayProfit += daily;
-
+    todayProfit += intervalProfit(ch, todayIdx, todayIdx + 1);
     monthProfit += intervalProfit(ch, monthStartIdx, monthEndIdx);
     futureProfit += intervalProfit(ch, futureStartIdx, futureEndIdx);
 
@@ -713,8 +785,7 @@ function renderManage() {
         (ch.label || "") +
         " " +
         (ch.phone || "")
-      )
-        .toLowerCase();
+      ).toLowerCase();
       if (!hay.includes(search)) return false;
     }
     return true;
@@ -736,6 +807,8 @@ function renderManage() {
     });
 
     byRef.forEach((checks, ref) => {
+      const block = document.createElement("div");
+
       const folder = document.createElement("div");
       folder.className = "folder";
       const unpaidCount = checks.filter(c => c.status !== "paid").length;
@@ -747,13 +820,17 @@ function renderManage() {
             ${checks.length} چک | فعال: ${unpaidCount} | پرداخت‌شده: ${paidCount}
           </div>
         </div>
-        <div class="folder-badge">نمایش جزئیات زیر</div>
+        <div class="folder-badge">لیست چک‌ها</div>
       `;
-      list.appendChild(folder);
 
+      const children = document.createElement("div");
       checks
         .sort((a, b) => jalaliToIndex(a.endJ) - jalaliToIndex(b.endJ))
-        .forEach(ch => list.appendChild(buildCheckCard(ch)));
+        .forEach(ch => children.appendChild(buildCheckCard(ch)));
+
+      block.appendChild(folder);
+      block.appendChild(children);
+      list.appendChild(block);
     });
   } else {
     filtered
