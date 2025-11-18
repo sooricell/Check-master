@@ -319,7 +319,7 @@ function addReferrer() {
 
 function getFormBaseData() {
   const type = document.getElementById("checkType").value;
-  const ref = document.getElementById("refSelect").value || "بدون معرف";
+  const ref = document.getElementById("refSelect").value;
   const buyer = document.getElementById("buyerName").value.trim();
   const phone = document.getElementById("buyerPhone").value.trim();
   const principal = parseMoney(document.getElementById("principal").value);
@@ -327,6 +327,7 @@ function getFormBaseData() {
   const startJStr = document.getElementById("startJ").value;
   const startJ = parseJalali(startJStr);
 
+  if (!ref || ref === "بدون معرف") throw new Error("معرف را انتخاب کن.");
   if (!buyer) throw new Error("نام خریدار خالی است.");
   if (!principal || principal <= 0) throw new Error("مبلغ اصل را درست وارد کن.");
   if (!rate || rate <= 0) throw new Error("درصد سود را درست وارد کن.");
@@ -340,7 +341,12 @@ function buildSingleCheckFromForm() {
   const endJStr = document.getElementById("endJ").value;
   const endJ = parseJalali(endJStr);
   if (!endJ) throw new Error("تاریخ سررسید را به صورت yy/mm/dd وارد کن.");
-  const code = document.getElementById("singleCode").value.trim();
+
+  const codeRaw = document.getElementById("singleCode").value;
+  const codeDigits = onlyDigits(codeRaw);
+  if (!codeDigits || codeDigits.length !== 16) {
+    throw new Error("شناسه ۱۶ رقمی چک را کامل وارد کن.");
+  }
 
   const check = {
     id: genId(),
@@ -356,13 +362,14 @@ function buildSingleCheckFromForm() {
     startJStr: base.startJStr,
     endJ,
     endJStr,
-    amount: 0, // مبلغ چک در تکی صرفاً اگر لازم شد بعداً دستی وارد می‌شود
-    code,
+    amount: base.principal, // مبلغ چک اولیه = اصل + سود بعداً در گزارش دیده می‌شود
+    code: codeDigits,
     label: "",
     note: "",
     status: "unpaid",
     extraDays: 0,
-    extraProfit: 0
+    extraProfit: 0,
+    monthlyProfit: 0 // برای سازگاری
   };
 
   return [check];
@@ -390,6 +397,7 @@ function buildMonthlySchedule() {
     throw new Error("تعداد ماه تنفس نامعتبر است.");
 
   const totalProfit = computeSeriesProfit(base.principal, base.rate, months, graceMonths);
+  const perCheckProfit = totalProfit / months;
   const perCheckAmount = Math.round((base.principal + totalProfit) / months);
 
   const baseIndex = jalaliToIndex(base.startJ);
@@ -418,6 +426,8 @@ function buildMonthlySchedule() {
     base,
     months,
     graceMonths,
+    totalProfit,
+    perCheckProfit,
     perCheckAmount,
     checks
   };
@@ -425,7 +435,7 @@ function buildMonthlySchedule() {
 
 function buildMonthlyChecksFromForm() {
   const sched = buildMonthlySchedule();
-  const { base, perCheckAmount, checks: scheduleChecks } = sched;
+  const { base, perCheckAmount, perCheckProfit, checks: scheduleChecks } = sched;
 
   const seriesId = genId();
   const monthlyList = document.getElementById("monthlyList");
@@ -434,7 +444,6 @@ function buildMonthlyChecksFromForm() {
   const result = [];
 
   scheduleChecks.forEach(sc => {
-    // سطر مرتبط در UI
     const row = Array.from(rows).find(
       r => Number(r.getAttribute("data-month-index")) === sc.index
     );
@@ -462,8 +471,12 @@ function buildMonthlyChecksFromForm() {
         if (v > 0) amount = v;
       }
 
-      if (codeInput) {
-        code = codeInput.value.trim();
+      if (!codeInput || !codeInput.value.trim()) {
+        throw new Error("شناسه ۱۶ رقمی قسط " + sc.index + " خالی است.");
+      }
+      code = onlyDigits(codeInput.value.trim());
+      if (!code || code.length !== 16) {
+        throw new Error("شناسه ۱۶ رقمی قسط " + sc.index + " را کامل وارد کن.");
       }
     }
 
@@ -475,7 +488,7 @@ function buildMonthlyChecksFromForm() {
       ref: base.ref,
       buyer: base.buyer,
       phone: base.phone,
-      principal: base.principal, // اصل قرارداد، برای همه چک‌ها یکسان (سود روی اصل محاسبه می‌شود)
+      principal: base.principal, // اصل قرارداد، برای همه چک‌ها یکسان
       rate: base.rate,
       startJ: base.startJ,
       startJStr: base.startJStr,
@@ -487,7 +500,8 @@ function buildMonthlyChecksFromForm() {
       note: "",
       status: "unpaid",
       extraDays: 0,
-      extraProfit: 0
+      extraProfit: 0,
+      monthlyProfit: perCheckProfit // سود پایه‌ی این قسط
     });
   });
 
@@ -533,20 +547,38 @@ function buildMonthlyUI() {
 
 // ================== Profit calculations ==================
 
-// سود کل این چک (بر اساس روز/۳۰) + سود تمدید
+// سود کل این چک (ماهانه: راس‌گیری برای هر قسط، تکی: بر اساس روز/۳۰) + سود تمدید
 function calcProfitForCheck(ch) {
-  const days = diffJalaliDays(ch.startJ, ch.endJ);
   const extra = ch.extraProfit || 0;
+
+  // ماهانه با monthlyProfit
+  if (ch.type === "monthly" && typeof ch.monthlyProfit === "number" && ch.monthlyProfit > 0) {
+    const base = ch.monthlyProfit;
+    return { base, extra, total: base + extra };
+  }
+
+  // حالت قدیمی یا چک تکی
+  const days = diffJalaliDays(ch.startJ, ch.endJ);
   if (days <= 0) return { base: 0, extra, total: extra };
   const baseProfit = ch.principal * (ch.rate / 100) * (days / 30);
   return { base: baseProfit, extra, total: baseProfit + extra };
 }
 
-// سود این چک در بازه‌ی مشخص [s,e) (فقط روی اصل، بدون extraProfit)
+// سود این چک در بازه‌ی مشخص [s,e) (فقط روی سود پایه، بدون extraProfit)
 function intervalProfit(ch, s, e) {
   const r = getCheckRange(ch);
   const d = overlapDays(r.start, r.end, s, e);
   if (d <= 0) return 0;
+
+  // توزیع روزانه‌ی سود برای ماهانه بر اساس monthlyProfit
+  if (ch.type === "monthly" && typeof ch.monthlyProfit === "number" && ch.monthlyProfit > 0) {
+    const totalDays = diffJalaliDays(ch.startJ, ch.endJ);
+    if (totalDays <= 0) return 0;
+    const perDay = ch.monthlyProfit / totalDays;
+    return perDay * d;
+  }
+
+  // چک تکی / قدیمی
   return ch.principal * (ch.rate / 100) * (d / 30);
 }
 
@@ -559,7 +591,6 @@ function previewCalc() {
     if (type === "single") {
       checks = buildSingleCheckFromForm();
     } else {
-      // اگر UI ساخته نشده، اول بسازیم
       const monthlyList = document.getElementById("monthlyList");
       if (monthlyList && !monthlyList.children.length) {
         buildMonthlyUI();
@@ -575,7 +606,7 @@ function previewCalc() {
     box.innerHTML =
       "تعداد چک‌ها: <b>" +
       checks.length +
-      "</b> | سود کل تقریبی (بر اساس اصل × نرخ × روز/۳۰): <b>" +
+      "</b> | سود کل تقریبی (بر اساس راس‌گیری): <b>" +
       formatMoney(Math.round(totalProfit)) +
       "</b> تومان";
   } catch (e) {
@@ -721,6 +752,11 @@ function getStatusInfo(ch) {
   if (ch.status === "paid") {
     return { cls: "st-paid", text: "پرداخت‌شده" };
   }
+
+  if ((ch.extraDays || 0) > 0) {
+    return { cls: "st-extended", text: "تمدید شده" };
+  }
+
   if (diffToDue < 0) return { cls: "st-overdue", text: "معوق" };
   if (diffToDue <= 10) return { cls: "st-near", text: "نزدیک سررسید" };
   return { cls: "st-unpaid", text: "فعال" };
@@ -773,41 +809,91 @@ function renderManage() {
 
   list.innerHTML = "";
 
-  if (!filtered.length) {
+  if (!filtered.length && mode !== "folders") {
     list.innerHTML =
       '<div class="tiny" style="padding:4px;">هیچ چکی مطابق فیلترها پیدا نشد.</div>';
     return;
   }
 
   if (mode === "folders") {
-    const byRef = new Map();
-    filtered.forEach(ch => {
-      const key = ch.ref || "بدون معرف";
-      if (!byRef.has(key)) byRef.set(key, []);
-      byRef.get(key).push(ch);
-    });
+    // پوشه برای همه معرف‌ها (حتی بدون چک)
+    state.referrers.forEach(ref => {
+      const checksForRef = filtered.filter(ch => (ch.ref || "بدون معرف") === ref);
+      const unpaidCount = checksForRef.filter(c => c.status !== "paid").length;
+      const paidCount = checksForRef.length - unpaidCount;
 
-    byRef.forEach((checks, ref) => {
       const folder = document.createElement("div");
       folder.className = "folder";
-      const unpaidCount = checks.filter(c => c.status !== "paid").length;
-      const paidCount = checks.length - unpaidCount;
       folder.innerHTML = `
         <div class="folder-main">
           <div class="folder-name">${ref}</div>
           <div class="folder-meta">
-            ${checks.length} چک | فعال: ${unpaidCount} | پرداخت‌شده: ${paidCount}
+            ${checksForRef.length} چک | فعال: ${unpaidCount} | پرداخت‌شده: ${paidCount}
           </div>
         </div>
         <div class="folder-badge">لیست چک‌ها در زیر</div>
       `;
       list.appendChild(folder);
 
-      checks
+      checksForRef
         .sort((a, b) => jalaliToIndex(a.endJ) - jalaliToIndex(b.endJ))
         .forEach(ch => list.appendChild(buildCheckCard(ch)));
     });
+
+    // پوشه سراسری پرداخت‌شده‌ها
+    const paidChecks = filtered.filter(ch => ch.status === "paid");
+    if (paidChecks.length) {
+      const folder = document.createElement("div");
+      folder.className = "folder";
+      folder.innerHTML = `
+        <div class="folder-main">
+          <div class="folder-name">پرداخت‌شده‌ها (سراسری)</div>
+          <div class="folder-meta">
+            ${paidChecks.length} چک پرداخت‌شده در همه معرف‌ها
+          </div>
+        </div>
+        <div class="folder-badge">نمایش در بایگانی کلی</div>
+      `;
+      list.appendChild(folder);
+
+      paidChecks
+        .sort((a, b) => jalaliToIndex(a.endJ) - jalaliToIndex(b.endJ))
+        .forEach(ch => list.appendChild(buildCheckCard(ch)));
+    }
+
+    // پوشه سراسری تمدید شده‌ها
+    const extendedChecks = filtered.filter(
+      ch => ch.status !== "paid" && (ch.extraDays || 0) > 0
+    );
+    if (extendedChecks.length) {
+      const folder = document.createElement("div");
+      folder.className = "folder";
+      folder.innerHTML = `
+        <div class="folder-main">
+          <div class="folder-name">تمدید شده‌ها (سراسری)</div>
+          <div class="folder-meta">
+            ${extendedChecks.length} چک تمدید شده در همه معرف‌ها
+          </div>
+        </div>
+        <div class="folder-badge">چک‌های دارای تمدید تاریخ</div>
+      `;
+      list.appendChild(folder);
+
+      extendedChecks
+        .sort((a, b) => jalaliToIndex(a.endJ) - jalaliToIndex(b.endJ))
+        .forEach(ch => list.appendChild(buildCheckCard(ch)));
+    }
+
+    if (!state.referrers.length && !filtered.length) {
+      list.innerHTML =
+        '<div class="tiny" style="padding:4px;">هنوز هیچ معرفی ثبت نشده است.</div>';
+    }
   } else {
+    if (!filtered.length) {
+      list.innerHTML =
+        '<div class="tiny" style="padding:4px;">هیچ چکی مطابق فیلترها پیدا نشد.</div>';
+      return;
+    }
     filtered
       .sort((a, b) => jalaliToIndex(a.endJ) - jalaliToIndex(b.endJ))
       .forEach(ch => list.appendChild(buildCheckCard(ch)));
@@ -1054,10 +1140,21 @@ function applyEdit() {
     const ch = state.checks.find(c => c.id === id);
     if (!ch) return;
 
+    const ref = document.getElementById("editRef").value;
+    if (!ref || ref === "بدون معرف") {
+      throw new Error("معرف را انتخاب کن.");
+    }
+
+    const codeRaw = document.getElementById("editCode").value;
+    const codeDigits = onlyDigits(codeRaw);
+    if (!codeDigits || codeDigits.length !== 16) {
+      throw new Error("شناسه ۱۶ رقمی چک را کامل وارد کن.");
+    }
+
     ch.buyer = document.getElementById("editBuyer").value.trim();
-    ch.ref = document.getElementById("editRef").value || "بدون معرف";
+    ch.ref = ref;
     ch.phone = document.getElementById("editPhone").value.trim();
-    ch.code = document.getElementById("editCode").value.trim();
+    ch.code = codeDigits;
     ch.label = document.getElementById("editLabel").value.trim();
     ch.note = document.getElementById("editNote").value.trim();
     ch.amount = parseMoney(document.getElementById("editAmount").value);
@@ -1102,7 +1199,6 @@ function extendCheck() {
 
     const addProfit = ch.principal * (ch.rate / 100) * (diff / 30);
 
-    // تمدید: فقط endJ را جلو می‌بریم، extraDays صرفاً برای اطلاعات است
     ch.endJ = newEndJ;
     ch.endJStr = jalaliToString(newEndJ);
     ch.extraDays = (ch.extraDays || 0) + diff;
@@ -1149,7 +1245,8 @@ function exportCSV() {
     "note",
     "status",
     "extraDays",
-    "extraProfit"
+    "extraProfit",
+    "monthlyProfit"
   ];
   const rows = state.checks.map(ch =>
     header
