@@ -1,4 +1,4 @@
-const CACHE_NAME = "checkmaster-v4"; // هر بار که main.js را عوض می‌کنی این را هم عوض کن
+const CACHE_NAME = "checkmaster-v4.1";
 const ASSETS = [
   "./",
   "./index.html",
