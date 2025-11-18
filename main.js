@@ -130,9 +130,8 @@ let state = {
   futureDays: 30
 };
 
-// فیلتر فعلی در حالت لیست
-let currentFolderFilter = null;        // نام معرف انتخاب‌شده
-let currentSpecialFolder = null;       // "paid" یا "extended" یا null
+// فیلتر فولدر فعلی در مدیریت
+let currentFolderFilter = null; // { type: 'ref' | 'paid' | 'extended', value?: string }
 
 function loadState() {
   try {
@@ -214,40 +213,6 @@ function switchTab(ev) {
 
 // ================== Input handlers ==================
 
-// محاسبه و نمایش «مبلغ چک» برای چک تکی در فرم افزودن
-function updateSingleAmountFromForm() {
-  const typeSelect = document.getElementById("checkType");
-  const singleAmountInput = document.getElementById("singleAmount");
-  if (!singleAmountInput || !typeSelect) return;
-
-  if (typeSelect.value !== "single") {
-    singleAmountInput.value = "";
-    return;
-  }
-
-  const principal = parseMoney(document.getElementById("principal").value);
-  const rate = Number(toEnglishDigits(document.getElementById("rate").value));
-  const startJStr = document.getElementById("startJ").value;
-  const endJStr = document.getElementById("endJ").value;
-  const startJ = parseJalali(startJStr);
-  const endJ = parseJalali(endJStr);
-
-  if (!principal || principal <= 0 || !rate || rate <= 0 || !startJ || !endJ) {
-    singleAmountInput.value = "";
-    return;
-  }
-
-  const days = diffJalaliDays(startJ, endJ);
-  if (days <= 0) {
-    singleAmountInput.value = "";
-    return;
-  }
-
-  const baseProfit = principal * (rate / 100) * (days / 30);
-  const totalPay = principal + baseProfit;
-  singleAmountInput.value = formatMoney(Math.round(totalPay));
-}
-
 function setupInputHandlers() {
   const doc = document;
 
@@ -278,11 +243,6 @@ function setupInputHandlers() {
     } else if (el.classList.contains("code-16")) {
       el.value = onlyDigits(el.value).slice(0, 16);
     }
-
-    // هر تغییری روی این فیلدها، مبلغ چک تکی را دوباره محاسبه می‌کند
-    if (["principal", "rate", "startJ", "endJ"].includes(el.id)) {
-      updateSingleAmountFromForm();
-    }
   });
 
   const typeSelect = document.getElementById("checkType");
@@ -312,22 +272,15 @@ function handleCheckTypeChange() {
   const singleExtra = document.getElementById("singleExtra");
   const singleEndWrap = document.getElementById("singleEndWrap");
   const monthlyExtra = document.getElementById("monthlyExtra");
-  const singleAmountRow = document.getElementById("singleAmountRow");
-  const singleAmountInput = document.getElementById("singleAmount");
 
   if (type === "single") {
     singleExtra.classList.remove("hidden");
     singleEndWrap.style.display = "";
     monthlyExtra.classList.add("hidden");
-    if (singleAmountRow) singleAmountRow.classList.remove("hidden");
-    updateSingleAmountFromForm();
   } else {
     singleExtra.classList.add("hidden");
     singleEndWrap.style.display = "none";
     monthlyExtra.classList.remove("hidden");
-    if (singleAmountRow) singleAmountRow.classList.add("hidden");
-    if (singleAmountInput) singleAmountInput.value = "";
-    buildMonthlyUI();
   }
 }
 
@@ -392,22 +345,22 @@ function buildSingleCheckFromForm() {
   const endJ = parseJalali(endJStr);
   if (!endJ) throw new Error("تاریخ سررسید را به صورت yy/mm/dd وارد کن.");
 
-  const days = diffJalaliDays(base.startJ, endJ);
-  if (days <= 0) throw new Error("تاریخ سررسید باید بعد از تاریخ صدور باشد.");
-
-  const baseProfit = base.principal * (base.rate / 100) * (days / 30);
-  const totalPay = base.principal + baseProfit;
-  const amountRounded = Math.round(totalPay);
-
-  const singleAmountInput = document.getElementById("singleAmount");
-  if (singleAmountInput) {
-    singleAmountInput.value = formatMoney(amountRounded);
-  }
-
   const codeRaw = document.getElementById("singleCode").value;
   const codeDigits = onlyDigits(codeRaw);
   if (!codeDigits || codeDigits.length !== 16) {
     throw new Error("شناسه ۱۶ رقمی چک را کامل وارد کن.");
+  }
+
+  // محاسبه سود و مبلغ چک تکی
+  const days = diffJalaliDays(base.startJ, endJ);
+  const months = days / 30;
+  const profitTotal = base.principal * (base.rate / 100) * months;
+  const totalPay = base.principal + profitTotal;
+
+  // آپدیت فیلد نمایش مبلغ چک
+  const singleAmountInput = document.getElementById("singleAmount");
+  if (singleAmountInput) {
+    singleAmountInput.value = formatMoney(Math.round(totalPay));
   }
 
   const check = {
@@ -424,7 +377,7 @@ function buildSingleCheckFromForm() {
     startJStr: base.startJStr,
     endJ,
     endJStr,
-    amount: amountRounded, // مبلغ چک = اصل + سود کل پایه
+    amount: Math.round(totalPay), // مبلغ چک = اصل + سود
     code: codeDigits,
     label: "",
     note: "",
@@ -512,11 +465,12 @@ function buildMonthlyChecksFromForm() {
 
     let endJStr = sc.endJStr;
     let endJ = sc.endJ;
-    let amount = perCheckAmount; // مبلغ هر چک از راس‌گیری، غیر قابل تغییر
+    let amount = sc.amount;
     let code = "";
 
     if (row) {
       const endInput = row.querySelector(".m-end");
+      const amtInput = row.querySelector(".m-amount");
       const codeInput = row.querySelector(".m-code");
 
       if (endInput && endInput.value.trim()) {
@@ -525,6 +479,11 @@ function buildMonthlyChecksFromForm() {
           throw new Error("تاریخ سررسید قسط " + sc.index + " نامعتبر است.");
         endJ = parsed;
         endJStr = jalaliToString(parsed);
+      }
+
+      if (amtInput && amtInput.value.trim()) {
+        const v = parseMoney(amtInput.value);
+        if (v > 0) amount = v;
       }
 
       if (!codeInput || !codeInput.value.trim()) {
@@ -736,18 +695,15 @@ function changeFutureDays() {
 function updateKPIs() {
   const todayJ = todayJalaliApprox();
   const todayIdx = jalaliToIndex(todayJ);
-
   const monthStart = { yy: todayJ.yy, mm: todayJ.mm, dd: 1 };
   const monthStartIdx = jalaliToIndex(monthStart);
   const monthEndIdx = monthStartIdx + 30;
-
   const futureStartIdx = todayIdx;
   const futureEndIdx = todayIdx + state.futureDays;
 
   let todayProfit = 0;
   let monthProfit = 0;
   let futureProfit = 0;
-
   let totalBase = 0;
   let totalExtra = 0;
 
@@ -757,58 +713,47 @@ function updateKPIs() {
   let paid = 0;
 
   state.checks.forEach(ch => {
-    // سود کل بر اساس منطق تک / ماهانه + تمدید
     const full = calcProfitForCheck(ch);
     totalBase += full.base;
     totalExtra += full.extra;
 
-    // وضعیت ظاهری را یکجا از همین تابع می‌گیریم
-    const st = getStatusInfo(ch, todayIdx);
-
-    if (st.text === "پرداخت‌شده") {
+    if (ch.status === "paid") {
       paid++;
-      return; // paid در سودهای امروز/ماه/آینده شرکت نمی‌کند
-    }
+    } else {
+      // فقط چک‌های غیرپرداخت‌شده در سودهای امروز/ماه/آینده شرکت می‌کنند
+      const daily = intervalProfit(ch, todayIdx, todayIdx + 1);
+      todayProfit += daily;
 
-    // هر چک غیرپرداخت‌شده = فعال (توی KPI Active)
-    active++;
+      monthProfit += intervalProfit(ch, monthStartIdx, monthEndIdx);
+      futureProfit += intervalProfit(ch, futureStartIdx, futureEndIdx);
 
-    // سودهای توزیع‌شده بر اساس روز
-    todayProfit += intervalProfit(ch, todayIdx, todayIdx + 1);
-    monthProfit += intervalProfit(ch, monthStartIdx, monthEndIdx);
-    futureProfit += intervalProfit(ch, futureStartIdx, futureEndIdx);
+      const dueIdx = jalaliToIndex(ch.endJ);
+      const diffToDue = dueIdx - todayIdx;
 
-    if (st.text.startsWith("معوق")) {
-      overdue++;
-    } else if (st.text.startsWith("نزدیک")) {
-      near++;
+      active++;
+      if (diffToDue < 0) overdue++;
+      else if (diffToDue >= 0 && diffToDue <= 10) near++;
     }
   });
 
   const setMoney = (id, val) => {
     const el = document.getElementById(id);
-    if (el) {
-      el.textContent = formatMoney(Math.round(val));
-    }
+    if (el) el.textContent = formatMoney(Math.round(val));
   };
 
-  // سودها روی کارت‌های KPI
   setMoney("kpiToday", todayProfit);
   setMoney("kpiMonth", monthProfit);
   setMoney("kpiNext30", futureProfit);
 
-  // وضعیت‌ها
   const elA = document.getElementById("kpiActive");
   const elN = document.getElementById("kpiNear");
   const elO = document.getElementById("kpiOverdue");
   const elP = document.getElementById("kpiPaid");
-
   if (elA) elA.textContent = String(active);
   if (elN) elN.textContent = String(near);
   if (elO) elO.textContent = String(overdue);
   if (elP) elP.textContent = String(paid);
 
-  // سود کل
   setMoney("kpiTotalProfitBase", totalBase);
   setMoney("kpiExtendedProfit", totalExtra);
   setMoney("kpiTotalProfit", totalBase + totalExtra);
@@ -816,47 +761,45 @@ function updateKPIs() {
 
 // ================== Manage list ==================
 
-function getStatusInfo(ch, todayIdxOverride) {
-  // اگر todayIdx از بیرون داده شود، از همان استفاده می‌کنیم
-  const todayIdx =
-    typeof todayIdxOverride === "number"
-      ? todayIdxOverride
-      : jalaliToIndex(todayJalaliApprox());
-
+function getStatusInfo(ch) {
+  const todayIdx = jalaliToIndex(todayJalaliApprox());
   const dueIdx = jalaliToIndex(ch.endJ);
   const diffToDue = dueIdx - todayIdx;
 
-  // 1) همیشه اول paid
   if (ch.status === "paid") {
     return { cls: "st-paid", text: "پرداخت‌شده" };
   }
 
-  // 2) بعد معوق (حتی اگر تمدید شده باشد ولی هنوز تاریخش گذشته باشد)
-  if (diffToDue < 0) {
-    return { cls: "st-overdue", text: "معوق" };
-  }
-
-  // 3) نزدیک سررسید (۰ تا ۱۰ روز)
-  if (diffToDue >= 0 && diffToDue <= 10) {
-    return { cls: "st-near", text: "نزدیک سررسید" };
-  }
-
-  // 4) تمدید شده (تاریخش هنوز نرسیده ولی extraDays دارد)
   if ((ch.extraDays || 0) > 0) {
     return { cls: "st-extended", text: "تمدید شده" };
   }
 
-  // 5) بقیه
+  if (diffToDue < 0) return { cls: "st-overdue", text: "معوق" };
+  if (diffToDue <= 10) return { cls: "st-near", text: "نزدیک سررسید" };
   return { cls: "st-unpaid", text: "فعال" };
+}
+
+// تغییر مود نمایش از سلکت
+function onManageModeChange() {
+  currentFolderFilter = null;
+  renderManage();
+}
+
+// کلیک روی فولدر
+function openFolder(type, value) {
+  currentFolderFilter = { type, value: value || null };
+  const modeSel = document.getElementById("manageMode");
+  if (modeSel) {
+    modeSel.value = "all"; // نمایش خطی برای همین فولدر
+  }
+  renderManage();
 }
 
 function renderManage() {
   const list = document.getElementById("manageList");
   if (!list) return;
 
-  const modeEl = document.getElementById("manageMode");
-  const mode = modeEl ? modeEl.value : "folders";
-
+  const mode = document.getElementById("manageMode").value;
   const statusFilter = document.getElementById("statusFilter").value;
   const search = (document.getElementById("searchInput").value || "")
     .toLowerCase()
@@ -869,7 +812,6 @@ function renderManage() {
 
   let filtered = state.checks.slice();
 
-  // ۱) فیلتر وضعیت / تاریخ / سرچ
   filtered = filtered.filter(ch => {
     if (statusFilter === "paid" && ch.status !== "paid") return false;
     if (statusFilter === "unpaid" && ch.status === "paid") return false;
@@ -891,28 +833,26 @@ function renderManage() {
         (ch.label || "") +
         " " +
         (ch.phone || "")
-      ).toLowerCase();
+      )
+        .toLowerCase();
       if (!hay.includes(search)) return false;
     }
+
+    // فیلتر براساس فولدر انتخابی
+    if (currentFolderFilter) {
+      if (currentFolderFilter.type === "ref") {
+        if ((ch.ref || "بدون معرف") !== currentFolderFilter.value) return false;
+      } else if (currentFolderFilter.type === "paid") {
+        if (ch.status !== "paid") return false;
+      } else if (currentFolderFilter.type === "extended") {
+        if (ch.status === "paid") return false;
+        const ex = (ch.extraDays || 0) > 0 || (ch.extraProfit || 0) > 0;
+        if (!ex) return false;
+      }
+    }
+
     return true;
   });
-
-  // ۲) فیلتر پوشه فقط در حالت "لیست همه چک‌ها"
-  if (mode === "all") {
-    if (currentFolderFilter) {
-      filtered = filtered.filter(
-        ch => (ch.ref || "بدون معرف") === currentFolderFilter
-      );
-    }
-
-    if (currentSpecialFolder === "paid") {
-      filtered = filtered.filter(ch => ch.status === "paid");
-    } else if (currentSpecialFolder === "extended") {
-      filtered = filtered.filter(
-        ch => ch.status !== "paid" && (ch.extraDays || 0) > 0
-      );
-    }
-  }
 
   list.innerHTML = "";
 
@@ -923,15 +863,9 @@ function renderManage() {
   }
 
   if (mode === "folders") {
-    // وقتی روی تب «پوشه‌ها» هستیم، فیلتر پوشه‌ی قبلی بی‌اثر می‌شود
-    currentFolderFilter = null;
-    currentSpecialFolder = null;
-
-    // ۲-۱) پوشه برای همهٔ معرف‌ها (حتی اگر ۰ چک داشته باشند)
+    // پوشه برای همه معرف‌ها (حتی بدون چک)
     state.referrers.forEach(ref => {
-      const checksForRef = filtered.filter(
-        ch => (ch.ref || "بدون معرف") === ref
-      );
+      const checksForRef = filtered.filter(ch => (ch.ref || "بدون معرف") === ref);
       const unpaidCount = checksForRef.filter(c => c.status !== "paid").length;
       const paidCount = checksForRef.length - unpaidCount;
 
@@ -944,26 +878,19 @@ function renderManage() {
             ${checksForRef.length} چک | فعال: ${unpaidCount} | پرداخت‌شده: ${paidCount}
           </div>
         </div>
-        <div class="folder-badge">برای دیدن فقط چک‌های این معرف، روی این پوشه کلیک کن</div>
+        <div class="folder-badge">لیست چک‌ها در زیر</div>
       `;
-
-      // کلیک روی پوشه → سوییچ به حالت لیست و فیلتر روی همان معرف
       folder.addEventListener("click", () => {
-        currentSpecialFolder = null;
-        currentFolderFilter = ref;
-        if (modeEl) modeEl.value = "all";
-        renderManage();
+        openFolder("ref", ref);
       });
-
       list.appendChild(folder);
 
-      // در خود حالت پوشه‌ها، چک‌ها همچنان زیر پوشه نمایش داده می‌شوند
       checksForRef
         .sort((a, b) => jalaliToIndex(a.endJ) - jalaliToIndex(b.endJ))
         .forEach(ch => list.appendChild(buildCheckCard(ch)));
     });
 
-    // ۲-۲) پوشه سراسری پرداخت‌شده‌ها
+    // پوشه سراسری پرداخت‌شده‌ها
     const paidChecks = filtered.filter(ch => ch.status === "paid");
     if (paidChecks.length) {
       const folder = document.createElement("div");
@@ -975,16 +902,11 @@ function renderManage() {
             ${paidChecks.length} چک پرداخت‌شده در همه معرف‌ها
           </div>
         </div>
-        <div class="folder-badge">برای دیدن فقط چک‌های پرداخت‌شده، کلیک کن</div>
+        <div class="folder-badge">نمایش در بایگانی کلی</div>
       `;
-
       folder.addEventListener("click", () => {
-        currentFolderFilter = null;
-        currentSpecialFolder = "paid";
-        if (modeEl) modeEl.value = "all";
-        renderManage();
+        openFolder("paid");
       });
-
       list.appendChild(folder);
 
       paidChecks
@@ -992,7 +914,7 @@ function renderManage() {
         .forEach(ch => list.appendChild(buildCheckCard(ch)));
     }
 
-    // ۲-۳) پوشه سراسری تمدید شده‌ها
+    // پوشه سراسری تمدید شده‌ها
     const extendedChecks = filtered.filter(
       ch => ch.status !== "paid" && (ch.extraDays || 0) > 0
     );
@@ -1006,16 +928,11 @@ function renderManage() {
             ${extendedChecks.length} چک تمدید شده در همه معرف‌ها
           </div>
         </div>
-        <div class="folder-badge">برای دیدن فقط چک‌های تمدیدی، کلیک کن</div>
+        <div class="folder-badge">چک‌های دارای تمدید تاریخ</div>
       `;
-
       folder.addEventListener("click", () => {
-        currentFolderFilter = null;
-        currentSpecialFolder = "extended";
-        if (modeEl) modeEl.value = "all";
-        renderManage();
+        openFolder("extended");
       });
-
       list.appendChild(folder);
 
       extendedChecks
@@ -1028,13 +945,11 @@ function renderManage() {
         '<div class="tiny" style="padding:4px;">هنوز هیچ معرفی ثبت نشده است.</div>';
     }
   } else {
-    // حالت لیست ساده
     if (!filtered.length) {
       list.innerHTML =
         '<div class="tiny" style="padding:4px;">هیچ چکی مطابق فیلترها پیدا نشد.</div>';
       return;
     }
-
     filtered
       .sort((a, b) => jalaliToIndex(a.endJ) - jalaliToIndex(b.endJ))
       .forEach(ch => list.appendChild(buildCheckCard(ch)));
@@ -1046,7 +961,6 @@ function buildCheckCard(ch) {
   div.className = "check-card";
   const st = getStatusInfo(ch);
   const p = calcProfitForCheck(ch);
-  const payoff = ch.principal + p.total;
 
   div.innerHTML = `
     <div class="check-top">
@@ -1056,7 +970,7 @@ function buildCheckCard(ch) {
           نوع: ${ch.type === "monthly" ? "ماهانه" : "تکی"} | سررسید: ${ch.endJStr}
         </div>
         <div class="tiny">
-          اصل: ${formatMoney(ch.principal)} | سود کل: ${formatMoney(Math.round(p.total))} | جمع تسویه: ${formatMoney(Math.round(payoff))}
+          اصل: ${formatMoney(ch.principal)} | سود کل این چک: ${formatMoney(Math.round(p.total))}
         </div>
         ${
           ch.amount
@@ -1077,26 +991,20 @@ function buildCheckCard(ch) {
 }
 
 function clearSearch() {
+  currentFolderFilter = null;
   const s = document.getElementById("searchInput");
   if (s) s.value = "";
   renderManage();
 }
 
 function clearFilters() {
+  currentFolderFilter = null;
   const fromJ = document.getElementById("fromJ");
   const toJ = document.getElementById("toJ");
   const status = document.getElementById("statusFilter");
-  const search = document.getElementById("searchInput");
-
   if (fromJ) fromJ.value = "";
   if (toJ) toJ.value = "";
   if (status) status.value = "any";
-  if (search) search.value = "";
-
-  // ریست فیلتر پوشه‌ها
-  currentFolderFilter = null;
-  currentSpecialFolder = null;
-
   renderManage();
 }
 
@@ -1207,7 +1115,6 @@ function openDetail(kind) {
         if (profitMode === "interval" && typeof intervalFn === "function") {
           profitForThis = intervalFn(ch);
         }
-        const payoff = ch.principal + profitForThis;
 
         html += `
           <div class="check-card">
@@ -1220,7 +1127,6 @@ function openDetail(kind) {
                 <div class="tiny">
                   اصل: ${formatMoney(ch.principal)}
                   | سود در این گزارش: ${formatMoney(Math.round(profitForThis))}
-                  | جمع اصل + سود این گزارش: ${formatMoney(Math.round(payoff))}
                 </div>
                 ${
                   ch.amount
@@ -1306,6 +1212,7 @@ function applyEdit() {
     ch.code = codeDigits;
     ch.label = document.getElementById("editLabel").value.trim();
     ch.note = document.getElementById("editNote").value.trim();
+    ch.amount = parseMoney(document.getElementById("editAmount").value);
     ch.rate = Number(
       toEnglishDigits(document.getElementById("editRate").value)
     );
@@ -1316,20 +1223,10 @@ function applyEdit() {
     const sJ = parseJalali(sStr);
     const eJ = parseJalali(eStr);
     if (!sJ || !eJ) throw new Error("تاریخ‌ها را به صورت yy/mm/dd وارد کن.");
-    const days = diffJalaliDays(sJ, eJ);
-    if (days <= 0) throw new Error("تاریخ سررسید باید بعد از تاریخ صدور باشد.");
-
     ch.startJ = sJ;
     ch.startJStr = jalaliToString(sJ);
     ch.endJ = eJ;
     ch.endJStr = jalaliToString(eJ);
-
-    // مبلغ چک برای چک تکی همیشه = اصل + سود پایه بر اساس تاریخ‌های فعلی
-    if (ch.type === "single") {
-      const baseProfit = ch.principal * (ch.rate / 100) * (days / 30);
-      const totalPay = ch.principal + baseProfit;
-      ch.amount = Math.round(totalPay);
-    }
 
     saveState();
     updateKPIs();
@@ -1443,6 +1340,7 @@ function wipeData() {
     checks: [],
     futureDays: 30
   };
+  currentFolderFilter = null;
   saveState();
   renderRefSelects();
   updateFutureDaysLabel();
