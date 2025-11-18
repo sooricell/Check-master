@@ -1,0 +1,2050 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <title>Check Master</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <style>
+    :root {
+      /* Dark theme (پیش‌فرض) */
+      --bg: #050608;
+      --bg-soft: #0b0c10;
+      --card: #0f1015;
+      --border: #2f323a;
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --accent: #e5c07b;   /* نودی، نه آبی */
+      --danger: #ef4444;
+      --success: #22c55e;
+      --tab-h: 60px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -webkit-text-size-adjust: 100%;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom));
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(7,8,12,0.96);
+      border-bottom: 1px solid rgba(75,85,99,0.7);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      border: 1px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      background: #111318;
+    }
+
+    .brand-title {
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 12px;
+    }
+
+    h2 {
+      font-size: 17px;
+      margin: 0 0 4px;
+    }
+
+    h3 {
+      font-size: 15px;
+      margin: 0 0 6px;
+    }
+
+    .subtitle {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin: 4px 2px;
+    }
+
+    input, select, textarea, button {
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(75,85,99,0.9);
+      background: #050608;
+      color: var(--text);
+      padding: 7px 9px;
+    }
+
+    input::placeholder, textarea::placeholder {
+      color: #6b7280;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 0;
+      border-color: var(--accent);
+    }
+
+    textarea {
+      min-height: 60px;
+      resize: vertical;
+    }
+
+    button {
+      cursor: pointer;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.7);
+      background: #050608;
+      color: var(--text);
+      padding: 7px 14px;
+      font-weight: 500;
+    }
+
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #111827;
+    }
+
+    button.small {
+      padding: 4px 9px;
+      font-size: 11px;
+    }
+
+    button.danger {
+      border-color: rgba(248,113,113,0.7);
+      color: #fecaca;
+    }
+
+    button:active {
+      transform: scale(0.97);
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .row > div {
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .tiny {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .sep {
+      height: 1px;
+      background: rgba(55,65,81,0.9);
+      margin: 8px 0;
+    }
+
+    .hidden { display: none; }
+
+    /* Tabs */
+    .tabs {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: calc(var(--tab-h) + env(safe-area-inset-bottom));
+      padding-bottom: env(safe-area-inset-bottom);
+      background: rgba(7,8,12,0.97);
+      border-top: 1px solid rgba(55,65,81,0.9);
+      display: flex;
+      z-index: 20;
+    }
+
+    .tab {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      font-size: 11px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .tab-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid transparent;
+      font-size: 14px;
+    }
+
+    .tab.active {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .tab.active .tab-icon {
+      border-color: var(--accent);
+    }
+
+    /* KPI */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px,1fr));
+      gap: 8px;
+    }
+
+    .kpi-card {
+      border-radius: 12px;
+      border: 1px solid rgba(75,85,99,0.9);
+      padding: 7px 9px;
+      cursor: pointer;
+      background: #050608;
+    }
+
+    .kpi-title {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 3px;
+    }
+
+    .kpi-value {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .kpi-sub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* Manage */
+    .folder {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 9px;
+      border-radius: 12px;
+      border: 1px solid rgba(75,85,99,0.9);
+      background: #050608;
+      margin-bottom: 6px;
+      cursor: pointer;
+    }
+
+    .folder-main {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .folder-name {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .folder-meta {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .folder-badge {
+      font-size: 11px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.9);
+      color: var(--muted);
+    }
+
+    .folder-archive {
+      border-color: rgba(129,140,248,0.9);
+    }
+
+    .check-list {
+      border-right: 1px dashed rgba(75,85,99,0.8);
+      margin: 4px 0 8px;
+      padding-right: 8px;
+    }
+
+    .check-card {
+      border-radius: 11px;
+      border: 1px solid rgba(75,85,99,0.9);
+      padding: 6px 7px;
+      margin-bottom: 5px;
+      font-size: 12px;
+      background: #050608;
+    }
+
+    .check-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 4px;
+    }
+
+    .status-pill {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      border: 1px solid;
+    }
+
+    .st-unpaid { color: #fbbf24; border-color: #fbbf24; }
+    .st-near   { color: #fb923c; border-color: #fb923c; }
+    .st-overdue{ color: #f97373; border-color: #f97373; }
+    .st-paid   { color: #4ade80; border-color: #4ade80; }
+
+    .check-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+    }
+
+    /* Overlays */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+
+    .overlay-card {
+      width: min(520px, 100% - 24px);
+      max-height: calc(100vh - 40px);
+      overflow: auto;
+      background: #050608;
+      border-radius: 14px;
+      border: 1px solid rgba(75,85,99,0.9);
+      padding: 10px;
+    }
+
+    .overlay-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .overlay-body {
+      font-size: 12px;
+    }
+
+    /* Search */
+    .search-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .search-input {
+      width: 100%;
+      border-radius: 999px;
+      padding-right: 28px;
+    }
+
+    .search-icon {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 13px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    .search-clear {
+      border-radius: 999px;
+      border: 1px solid rgba(75,85,99,0.9);
+      background: transparent;
+      color: var(--muted);
+      padding: 4px 8px;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f3f4f6;
+        --bg-soft: #f9fafb;
+        --card: #ffffff;
+        --border: #d1d5db;
+        --text: #111827;
+        --muted: #6b7280;
+        --accent: #d4a15d;  /* نود ملایم */
+      }
+      header { background: #f9fafb; }
+      .tabs { background: #f9fafb; }
+      .card, .folder, .check-card, .kpi-card { background: #ffffff; }
+      input, select, textarea {
+        background: #f9fafb;
+        color: #111827;
+      }
+      button {
+        background: #f9fafb;
+        color: #111827;
+      }
+      button.primary {
+        background: var(--accent);
+        color: #111827;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="brand-icon">✓</div>
+      <div class="brand-title">Check Master</div>
+    </div>
+  </header>
+
+  <main>
+    <!-- گزارش -->
+    <section id="view-report">
+      <h2>گزارش سود و وضعیت چک‌ها</h2>
+      <div class="subtitle">سود روزانه، ماهانه، ۳۰ روز آینده و وضعیت کلی چک‌ها.</div>
+
+      <div class="card">
+        <div class="kpi-grid">
+          <div class="kpi-card" onclick="openDetail('today')">
+            <div class="kpi-title">سود امروز</div>
+            <div class="kpi-value" id="kpiToday">0</div>
+            <div class="kpi-sub">ریال</div>
+          </div>
+          <div class="kpi-card" onclick="openDetail('month')">
+            <div class="kpi-title">سود ماه جاری</div>
+            <div class="kpi-value" id="kpiMonth">0</div>
+            <div class="kpi-sub">ریال</div>
+          </div>
+          <div class="kpi-card" onclick="openDetail('next30')">
+            <div class="kpi-title">سود <span id="kpiNextDays">۳۰</span> روز آینده</div>
+            <div class="kpi-value" id="kpiNext30">0</div>
+            <div class="kpi-sub">ریال</div>
+          </div>
+        </div>
+        <div class="sep"></div>
+        <div class="kpi-grid">
+          <div class="kpi-card" onclick="openDetail('active')">
+            <div class="kpi-title">چک‌های فعال</div>
+            <div class="kpi-value" id="kpiActive">0</div>
+          </div>
+          <div class="kpi-card" onclick="openDetail('near')">
+            <div class="kpi-title">نزدیک سررسید (۱۰ روز)</div>
+            <div class="kpi-value" id="kpiNear">0</div>
+          </div>
+          <div class="kpi-card" onclick="openDetail('overdue')">
+            <div class="kpi-title">چک‌های معوق</div>
+            <div class="kpi-value" id="kpiOverdue">0</div>
+          </div>
+          <div class="kpi-card" onclick="openDetail('paid')">
+            <div class="kpi-title">چک‌های پرداخت‌شده</div>
+            <div class="kpi-value" id="kpiPaid">0</div>
+          </div>
+        </div>
+        <div class="sep"></div>
+        <div class="kpi-title">سود کل (شامل تمدید)</div>
+        <div class="kpi-value" id="kpiTotalProfit">0</div>
+      </div>
+    </section>
+
+    <!-- افزودن چک -->
+    <section id="view-add" class="hidden">
+      <h2>افزودن چک</h2>
+      <div class="subtitle">چک یک‌باره یا سری چک‌های ماهانه بر اساس سود ماهانه.</div>
+
+      <div class="card">
+        <div class="row">
+          <div>
+            <label>نوع چک</label>
+            <select id="checkType">
+              <option value="single">چک یک‌باره</option>
+              <option value="monthly">چک‌های ماهانه</option>
+            </select>
+          </div>
+          <div>
+            <label>معرف</label>
+            <select id="refSelect"></select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>نام خریدار</label>
+            <input id="buyerName" placeholder="مثلاً: آقای حسینی">
+          </div>
+          <div>
+            <label>شماره تلفن خریدار (اختیاری)</label>
+            <input id="buyerPhone" class="phone-input" placeholder="مثلاً: 0912..." inputmode="tel">
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>مبلغ کل (اصل)</label>
+            <input id="principal" class="money-input" data-money="1" placeholder="100,000,000">
+          </div>
+          <div>
+            <label>درصد سود ماهانه (%)</label>
+            <input id="rate" class="numeric-dec" placeholder="مثلاً: 10" inputmode="decimal">
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>تاریخ صدور (جلالی - yy/mm/dd)</label>
+            <input id="startJ" class="jalali-input" placeholder="03/11/05">
+            <input id="startDate" type="hidden">
+          </div>
+          <div id="singleEndWrap">
+            <label>تاریخ سررسید (جلالی - yy/mm/dd)</label>
+            <input id="endJ" class="jalali-input" placeholder="03/12/05">
+            <input id="endDate" type="hidden">
+          </div>
+        </div>
+
+        <div id="singleExtra">
+          <div class="row">
+            <div>
+              <label>شناسه ۱۶ رقمی چک</label>
+              <input id="singleCode" class="code-16" maxlength="16" inputmode="numeric" placeholder="فقط عدد">
+            </div>
+          </div>
+        </div>
+
+        <div id="monthlyExtra" class="hidden">
+          <div class="row">
+            <div>
+              <label>تعداد ماه</label>
+              <input id="months" class="numeric-int" inputmode="numeric" placeholder="مثلاً: 5">
+            </div>
+            <div>
+              <label>تعداد ماه تنفس</label>
+              <input id="graceMonths" class="numeric-int" inputmode="numeric" value="1">
+            </div>
+          </div>
+          <div class="sep"></div>
+          <div class="tiny">برای هر ماه، تاریخ سررسید جلالی و شناسه چک را می‌توانی ویرایش کنی.</div>
+          <div id="monthlyList" style="margin-top:6px;"></div>
+        </div>
+
+        <div class="sep"></div>
+        <button onclick="previewCalc()">محاسبه پیش‌نمایش سود</button>
+        <div id="previewBox" class="tiny" style="margin-top:4px;"></div>
+
+        <div style="margin-top:10px;">
+          <button class="primary" onclick="saveCheck()">ذخیره چک</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- مدیریت چک‌ها -->
+    <section id="view-manage" class="hidden">
+      <h2>مدیریت چک‌ها</h2>
+      <div class="subtitle">جستجو، فیلتر، پوشه‌بندی و آرشیو چک‌ها.</div>
+
+      <div class="card">
+        <label>جستجو</label>
+        <div class="search-wrap">
+          <div style="position:relative; flex:1;">
+            <input id="searchInput" class="search-input" placeholder="خریدار، معرف، شناسه، تلفن، برچسب">
+            <span class="search-icon">🔍</span>
+          </div>
+          <button class="search-clear" onclick="clearSearch()">حذف</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <div>
+            <label>حالت نمایش</label>
+            <select id="manageMode" onchange="renderManage()">
+              <option value="folders">بر اساس معرف‌ها</option>
+              <option value="all">لیست همه چک‌ها</option>
+            </select>
+          </div>
+          <div>
+            <label>فیلتر وضعیت</label>
+            <select id="statusFilter" onchange="renderManage()">
+              <option value="any">همه</option>
+              <option value="unpaid">فعال / نزدیک / معوق</option>
+              <option value="paid">پرداخت‌شده</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:4px;">
+          <div>
+            <label>از تاریخ سررسید (جلالی - yy/mm/dd)</label>
+            <input id="fromJ" class="jalali-input" placeholder="03/01/01">
+            <input id="fromDate" type="hidden">
+          </div>
+          <div>
+            <label>تا تاریخ سررسید (جلالی - yy/mm/dd)</label>
+            <input id="toJ" class="jalali-input" placeholder="03/12/29">
+            <input id="toDate" type="hidden">
+          </div>
+        </div>
+        <div style="margin-top:6px;">
+          <button class="small" onclick="clearFilters()">حذف فیلترها</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>افزودن معرف جدید</h3>
+        <div class="row">
+          <div><input id="newReferrer" placeholder="نام معرف (مثلاً: علی رضایی)"></div>
+          <div><button class="primary" onclick="addReferrer()">افزودن معرف</button></div>
+        </div>
+      </div>
+
+      <div id="manageList"></div>
+    </section>
+
+    <!-- تنظیمات -->
+    <section id="view-settings" class="hidden">
+      <h2>تنظیمات</h2>
+      <div class="subtitle">پشتیبان، حذف داده‌ها، اطلاعات توسعه‌دهنده.</div>
+
+      <div class="card">
+        <h3>پشتیبان‌گیری</h3>
+        <div class="row">
+          <div><button onclick="exportCSV()">خروجی CSV</button></div>
+          <div><button onclick="exportJSON()">پشتیبان JSON</button></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>حذف کامل همه داده‌ها</h3>
+        <div class="tiny">همه معرف‌ها و چک‌ها پاک می‌شوند.</div>
+        <div style="margin-top:6px;">
+          <button class="danger" onclick="wipeData()">حذف همه داده‌ها</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>درباره Check Master</h3>
+        <div class="tiny">
+          <div>مدیریت چک و سود روزانه/ماهانه با تاریخ جلالی.</div>
+          <div>Developer: <b>Soroush</b></div>
+          <div>نسخه: 3.2 (Jalali + Daily Profit)</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- تب‌ها -->
+  <nav class="tabs">
+    <div class="tab active" data-target="view-report" onclick="switchTab(event)">
+      <div class="tab-icon">📊</div>
+      <div>گزارش</div>
+    </div>
+    <div class="tab" data-target="view-add" onclick="switchTab(event)">
+      <div class="tab-icon">➕</div>
+      <div>افزودن چک</div>
+    </div>
+    <div class="tab" data-target="view-manage" onclick="switchTab(event)">
+      <div class="tab-icon">📂</div>
+      <div>مدیریت</div>
+    </div>
+    <div class="tab" data-target="view-settings" onclick="switchTab(event)">
+      <div class="tab-icon">⚙️</div>
+      <div>تنظیمات</div>
+    </div>
+  </nav>
+
+  <!-- جزئیات گزارش -->
+  <div id="detailBack" class="overlay" onclick="if(event.target.id==='detailBack') closeDetail()">
+    <div class="overlay-card">
+      <div class="overlay-header">
+        <h3 id="detailTitle">جزئیات</h3>
+        <button class="small" onclick="closeDetail()">بستن</button>
+      </div>
+      <div id="detailBody" class="overlay-body"></div>
+    </div>
+  </div>
+
+  <!-- ویرایش / تمدید چک -->
+  <div id="editBack" class="overlay" onclick="if(event.target.id==='editBack') closeEdit()">
+    <div class="overlay-card">
+      <div class="overlay-header">
+        <h3>ویرایش / تمدید چک</h3>
+        <button class="small" onclick="closeEdit()">بستن</button>
+      </div>
+      <div class="overlay-body">
+        <input type="hidden" id="editId">
+        <div class="row">
+          <div>
+            <label>نام خریدار</label>
+            <input id="editBuyer">
+          </div>
+          <div>
+            <label>معرف</label>
+            <select id="editRef"></select>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>نوع چک</label>
+            <input id="editType" disabled>
+          </div>
+          <div>
+            <label>شماره تلفن (اختیاری)</label>
+            <input id="editPhone" class="phone-input">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>شناسه ۱۶ رقمی</label>
+            <input id="editCode" class="code-16" maxlength="16" inputmode="numeric">
+          </div>
+          <div>
+            <label>برچسب</label>
+            <input id="editLabel" placeholder="مثلاً: بازار، طلا، ...">
+          </div>
+        </div>
+        <div>
+          <label>یادداشت</label>
+          <textarea id="editNote" placeholder="توضیح کوتاه"></textarea>
+        </div>
+        <div class="row">
+          <div>
+            <label>مبلغ چک</label>
+            <input id="editAmount" class="money-input" data-money="1">
+          </div>
+          <div>
+            <label>درصد سود ماهانه (%)</label>
+            <input id="editRate" class="numeric-dec" inputmode="decimal">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>تاریخ صدور (جلالی)</label>
+            <input id="editStartJ" class="jalali-input">
+            <input id="editStart" type="hidden">
+          </div>
+          <div>
+            <label>تاریخ سررسید (جلالی)</label>
+            <input id="editEndJ" class="jalali-input">
+            <input id="editEnd" type="hidden">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>وضعیت</label>
+            <select id="editStatus">
+              <option value="unpaid">فعال</option>
+              <option value="paid">پرداخت‌شده</option>
+            </select>
+          </div>
+          <div>
+            <label>سود کل (نمایش خودکار)</label>
+            <input id="editProfitDisplay" disabled>
+          </div>
+        </div>
+        <div class="tiny" style="margin-top:4px;">سود بر اساس اختلاف واقعی روزها و درصد ماهانه محاسبه می‌شود. سود تمدید به‌صورت جداگانه ذخیره می‌شود.</div>
+        <div class="sep"></div>
+        <div class="row">
+          <div><button class="primary" onclick="applyEdit()">ذخیره تغییرات</button></div>
+          <div><button onclick="extendCheck()">تمدید با تاریخ جدید</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <script>
+// ---------- کمک‌کننده تبدیل اعداد ----------
+function toLatinDigits(str) {
+  if (!str) return "";
+  const fa = "۰۱۲۳۴۵۶۷۸۹";
+  const ar = "٠١٢٣٤٥٦٧٨٩";
+  let res = "";
+  for (let ch of String(str)) {
+    const iFa = fa.indexOf(ch);
+    const iAr = ar.indexOf(ch);
+    if (iFa >= 0) res += String(iFa);
+    else if (iAr >= 0) res += String(iAr);
+    else res += ch;
+  }
+  return res;
+}
+
+function formatMoney(numStr) {
+  let s = String(numStr).replace(/[^0-9]/g, "");
+  if (!s) return "";
+  return s.replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+}
+
+function parseMoney(str) {
+  const s = toLatinDigits(str).replace(/[^0-9]/g, "");
+  return s ? parseInt(s, 10) : 0;
+}
+
+// ---------- تبدیل جلالی / میلادی ----------
+function gregorianToJalali(gy, gm, gd) {
+  const g_d_m = [0,31,59,90,120,151,181,212,243,273,304,334];
+
+  gy -= 1600;
+  gd -= 1;
+  const gy2 = gy + 1;
+
+  let days =
+    365 * gy +
+    Math.floor((gy2 + 3) / 4) -
+    Math.floor((gy2 + 99) / 100) +
+    Math.floor((gy2 + 399) / 400);
+
+  days += g_d_m[gm - 1] + gd;
+
+  if (gm > 2 && ((gy2 % 4 === 0 && gy2 % 100 !== 0) || gy2 % 400 === 0)) {
+    days++;
+  }
+
+  days -= 79;
+
+  const jyCycle = Math.floor(days / 12053);
+  days %= 12053;
+
+  let jy = 979 + 33 * jyCycle + 4 * Math.floor(days / 1461);
+  days %= 1461;
+
+  if (days >= 366) {
+    jy += Math.floor((days - 1) / 365);
+    days = (days - 1) % 365;
+  }
+
+  let jm, jd;
+  if (days < 186) {
+    jm = 1 + Math.floor(days / 31);
+    jd = 1 + (days % 31);
+  } else {
+    jm = 7 + Math.floor((days - 186) / 30);
+    jd = 1 + ((days - 186) % 30);
+  }
+
+  return { jy, jm, jd };
+}
+
+// جستجو روی تقویم میلادی با استفاده از gregorianToJalali
+function jalaliToGregorian(jy, jm, jd) {
+  const gyApprox = jy + 621;
+  const start = new Date(gyApprox - 1, 2, 1); // 1 March
+
+  for (let i = 0; i < 800; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    const j = gregorianToJalali(d.getFullYear(), d.getMonth() + 1, d.getDate());
+    if (j.jy === jy && j.jm === jm && j.jd === jd) {
+      return { gy: d.getFullYear(), gm: d.getMonth() + 1, gd: d.getDate() };
+    }
+  }
+  return { gy: gyApprox, gm: 1, gd: 1 };
+}
+
+function parseJalaliShortToIso(jStr) {
+  if (!jStr) return "";
+  const s = toLatinDigits(jStr);
+  const parts = s.split("/");
+  if (parts.length !== 3) return "";
+  const yy = parseInt(parts[0] || "0", 10);
+  const jm = parseInt(parts[1] || "0", 10);
+  const jd = parseInt(parts[2] || "0", 10);
+  if (!yy || !jm || !jd) return "";
+
+  const jy = 1400 + yy;
+  const g  = jalaliToGregorian(jy, jm, jd);
+  const gm2 = String(g.gm).padStart(2, "0");
+  const gd2 = String(g.gd).padStart(2, "0");
+  return g.gy + "-" + gm2 + "-" + gd2;
+}
+
+function isoToJalaliShort(iso) {
+  if (!iso) return "";
+  const [gyStr, gmStr, gdStr] = iso.split("-");
+  const gy = parseInt(gyStr,10);
+  const gm = parseInt(gmStr,10);
+  const gd = parseInt(gdStr,10);
+  const j = gregorianToJalali(gy, gm, gd);
+  const yy = String(j.jy - 1400).padStart(2, "0");
+  const mm = String(j.jm).padStart(2, "0");
+  const dd = String(j.jd).padStart(2, "0");
+  return yy + "/" + mm + "/" + dd;
+}
+
+function isoToDate(iso) {
+  if (!iso) return null;
+  const [y,m,d] = iso.split("-").map(n => parseInt(n,10));
+  return new Date(y, m-1, d);
+}
+
+function addMonthsIso(iso, months) {
+  const dt = isoToDate(iso);
+  if (!dt) return "";
+  const newDate = new Date(dt.getFullYear(), dt.getMonth() + months, dt.getDate());
+  const y2 = newDate.getFullYear();
+  const m2 = String(newDate.getMonth() + 1).padStart(2, "0");
+  const d2 = String(newDate.getDate()).padStart(2, "0");
+  return y2 + "-" + m2 + "-" + d2;
+}
+
+function addDaysIso(iso, days) {
+  const d = isoToDate(iso);
+  if (!d) return "";
+  const nd = new Date(d.getFullYear(), d.getMonth(), d.getDate() + days);
+  const y = nd.getFullYear();
+  const m = String(nd.getMonth() + 1).padStart(2, "0");
+  const day = String(nd.getDate()).padStart(2, "0");
+  return y + "-" + m + "-" + day;
+}
+
+function diffDays(isoA, isoB) {
+  const da = isoToDate(isoA);
+  const db = isoToDate(isoB);
+  if (!da || !db) return 0;
+  const t = db.getTime() - da.getTime();
+  return Math.round(t / (1000 * 60 * 60 * 24));
+}
+
+function todayIso() {
+  const t = new Date();
+  const y = t.getFullYear();
+  const m = String(t.getMonth() + 1).padStart(2, "0");
+  const d = String(t.getDate()).padStart(2, "0");
+  return y + "-" + m + "-" + d;
+}
+
+// ---------- دیتا و ذخیره ----------
+let store = { referrers: [], checks: [] };
+
+function loadStore() {
+  try {
+    const raw = localStorage.getItem("checkMasterData");
+    if (raw) {
+      store = JSON.parse(raw);
+    } else {
+      store = {
+        referrers: [{ id: "default", name: "بدون معرف" }],
+        checks: []
+      };
+    }
+  } catch(e) {
+    store = {
+      referrers: [{ id: "default", name: "بدون معرف" }],
+      checks: []
+    };
+  }
+}
+
+function saveStore() {
+  localStorage.setItem("checkMasterData", JSON.stringify(store));
+}
+
+function newId() {
+  return Date.now().toString(36) + "-" + Math.random().toString(36).slice(2,8);
+}
+
+// ---------- ورودی‌ها ----------
+function setupMoneyInputs() {
+  document.querySelectorAll(".money-input").forEach(el => {
+    el.addEventListener("input", () => {
+      const raw = toLatinDigits(el.value).replace(/[^0-9]/g, "");
+      el.value = formatMoney(raw);
+    });
+  });
+}
+
+function setupNumericInputs() {
+  document.querySelectorAll(".numeric-int").forEach(el => {
+    el.addEventListener("input", () => {
+      el.value = toLatinDigits(el.value).replace(/[^0-9]/g, "");
+    });
+  });
+  document.querySelectorAll(".numeric-dec").forEach(el => {
+    el.addEventListener("input", () => {
+      let v = toLatinDigits(el.value);
+      v = v.replace(/[^0-9.]/g,"");
+      const parts = v.split(".");
+      if (parts.length > 2) v = parts[0] + "." + parts.slice(1).join("");
+      el.value = v;
+    });
+  });
+  document.querySelectorAll(".phone-input").forEach(el => {
+    el.addEventListener("input", () => {
+      el.value = toLatinDigits(el.value).replace(/[^0-9]/g,"");
+    });
+  });
+  document.querySelectorAll(".code-16").forEach(el => {
+    el.addEventListener("input", () => {
+      el.value = toLatinDigits(el.value).replace(/[^0-9]/g,"").slice(0,16);
+    });
+  });
+}
+
+function setupJalaliInput(idJ, idHidden) {
+  const jEl = document.getElementById(idJ);
+  const hEl = document.getElementById(idHidden);
+  if (!jEl || !hEl) return;
+  jEl.addEventListener("input", () => {
+    let v = toLatinDigits(jEl.value).replace(/[^0-9]/g,"");
+    if (v.length > 2 && v.length <= 4) {
+      v = v.slice(0,2) + "/" + v.slice(2);
+    } else if (v.length > 4) {
+      v = v.slice(0,2) + "/" + v.slice(2,4) + "/" + v.slice(4,6);
+    }
+    jEl.value = v.slice(0,8);
+  });
+  jEl.addEventListener("blur", () => {
+    const iso = parseJalaliShortToIso(jEl.value);
+    hEl.value = iso;
+  });
+}
+
+// ---------- تب‌ها ----------
+window.switchTab = function (ev) {
+  const tabEl  = ev.currentTarget;
+  const target = tabEl.getAttribute("data-target");
+
+  document.querySelectorAll(".tab").forEach(t =>
+    t.classList.remove("active")
+  );
+  tabEl.classList.add("active");
+
+  document.querySelectorAll("main > section").forEach(sec => {
+    if (sec.id === target) sec.classList.remove("hidden");
+    else sec.classList.add("hidden");
+  });
+};
+
+// ---------- معرف‌ها ----------
+function renderReferrerSelects() {
+  const refSelect = document.getElementById("refSelect");
+  const editRef   = document.getElementById("editRef");
+  [refSelect, editRef].forEach(sel => {
+    if (!sel) return;
+    sel.innerHTML = "";
+    store.referrers.forEach(r => {
+      const opt = document.createElement("option");
+      opt.value = r.id;
+      opt.textContent = r.name;
+      sel.appendChild(opt);
+    });
+  });
+}
+
+function addReferrer() {
+  const inp  = document.getElementById("newReferrer");
+  const name = inp.value.trim();
+  if (!name) return;
+  store.referrers.push({ id: newId(), name });
+  saveStore();
+  inp.value = "";
+  renderReferrerSelects();
+  renderManage();
+}
+
+// ---------- چک‌های ماهانه ----------
+let monthlyPreview = null;
+
+// سوییچ نوع چک (single / monthly)
+window.onTypeChange = function () {
+  const type          = document.getElementById("checkType").value;
+  const monthlyExtra  = document.getElementById("monthlyExtra");
+  const singleExtra   = document.getElementById("singleExtra");
+  const singleEndWrap = document.getElementById("singleEndWrap");
+
+  if (type === "single") {
+    monthlyExtra.classList.add("hidden");
+    singleExtra.classList.remove("hidden");
+    singleEndWrap.classList.remove("hidden");
+  } else {
+    monthlyExtra.classList.remove("hidden");
+    singleExtra.classList.add("hidden");
+    singleEndWrap.classList.add("hidden");
+    generateMonthlySchedule();
+  }
+};
+
+function generateMonthlySchedule() {
+  const principal = parseMoney(document.getElementById("principal").value);
+  const rate      = parseFloat(toLatinDigits(
+    document.getElementById("rate").value
+  )) || 0;
+  const startIso  = document.getElementById("startDate").value;
+  const monthsVal = toLatinDigits(document.getElementById("months").value);
+  const graceVal  = toLatinDigits(document.getElementById("graceMonths").value);
+
+  const months = monthsVal ? parseInt(monthsVal,10) : 0;
+
+  let graceInput = graceVal ? parseInt(graceVal,10) : 1;
+  if (!graceInput || graceInput < 1) graceInput = 1;
+  const grace = graceInput;
+
+  const list = document.getElementById("monthlyList");
+  list.innerHTML = "";
+  monthlyPreview = null;
+
+  if (!months || !principal || !rate || !startIso) return;
+
+  // فرمول سود کل سری
+  const effMonths    = months / 2 + grace * 0.5;
+  const totalPercent = (rate * effMonths) / 100;
+  const totalAmount  = Math.round(principal * (1 + totalPercent));
+  const perAmount    = Math.round(totalAmount / months);
+
+  monthlyPreview = { months, grace, principal, rate, perAmount, startIso };
+
+  const shift = graceInput - 1;
+
+  for (let i = 0; i < months; i++) {
+    const dueIso = addMonthsIso(startIso, shift + i + 1);
+    const dueJ   = isoToJalaliShort(dueIso);
+
+    const row = document.createElement("div");
+    row.className = "card";
+    row.style.marginBottom = "6px";
+    row.innerHTML = `
+      <div class="row">
+        <div>
+          <label>چک ماه ${i + 1}</label>
+          <div class="tiny">مبلغ: ${formatMoney(perAmount)}</div>
+        </div>
+        <div>
+          <label>تاریخ سررسید (جلالی)</label>
+          <input class="jalali-input monthly-end" data-index="${i}" value="${dueJ}">
+        </div>
+      </div>
+      <div class="row" style="margin-top:4px;">
+        <div>
+          <label>شناسه ۱۶ رقمی</label>
+          <input class="code-16 monthly-code" data-index="${i}" maxlength="16"
+                 inputmode="numeric" placeholder="فقط عدد">
+        </div>
+      </div>
+    `;
+    list.appendChild(row);
+  }
+
+  // فرمت جلالی برای هر کدوم
+  list.querySelectorAll(".jalali-input").forEach(el => {
+    el.addEventListener("input", () => {
+      let v = toLatinDigits(el.value).replace(/[^0-9]/g,"");
+      if (v.length > 2 && v.length <= 4) {
+        v = v.slice(0,2) + "/" + v.slice(2);
+      } else if (v.length > 4) {
+        v = v.slice(0,2) + "/" + v.slice(2,4) + "/" + v.slice(4,6);
+      }
+      el.value = v.slice(0,8);
+    });
+  });
+
+  // محدودیت ۱۶ رقم
+  list.querySelectorAll(".code-16").forEach(el => {
+    el.addEventListener("input", () => {
+      el.value = toLatinDigits(el.value).replace(/[^0-9]/g,"").slice(0,16);
+    });
+  });
+}
+
+// ---------- محاسبه سود ----------
+function calcFullProfit(amount, rate, startIso, endIso) {
+  if (!amount || !rate || !startIso || !endIso) return 0;
+  const days = diffDays(startIso, endIso);
+  if (days <= 0) return 0;
+  const monthsApprox = days / 30;
+  const profit = amount * (rate / 100) * monthsApprox;
+  return Math.round(profit);
+}
+
+function getProfitBase(ch) {
+  if (ch.type === "single" && typeof ch.principal === "number" && ch.principal > 0) {
+    return ch.principal;
+  }
+  return ch.amount || 0;
+}
+
+function calcProfitInRange(ch, fromIso, toIso) {
+  if (!ch.startDate || !ch.endDate) return 0;
+  const base = getProfitBase(ch);
+  if (!base || !ch.rate) return 0;
+
+  const from = isoToDate(fromIso);
+  const to   = isoToDate(toIso);
+  const cs   = isoToDate(ch.startDate);
+  const ce   = isoToDate(ch.endDate);
+  if (!from || !to || !cs || !ce) return 0;
+
+  const start = new Date(Math.max(from.getTime(), cs.getTime()));
+  const end   = new Date(Math.min(to.getTime(), ce.getTime()));
+
+  const ms = end.getTime() - start.getTime();
+  if (ms <= 0) return 0;
+
+  const days = ms / (1000*60*60*24);
+  const perDay = base * (ch.rate / 100) / 30;
+  return perDay * days;
+}
+
+// ---------- ذخیره چک جدید ----------
+function previewCalc() {
+  const type      = document.getElementById("checkType").value;
+  const principal = parseMoney(document.getElementById("principal").value);
+  const rate      = parseFloat(toLatinDigits(
+    document.getElementById("rate").value
+  )) || 0;
+  const startIso  = document.getElementById("startDate").value;
+  const endIso    = document.getElementById("endDate").value;
+  const previewBox = document.getElementById("previewBox");
+  previewBox.textContent = "";
+
+  if (!principal || !rate || !startIso) {
+    previewBox.textContent = "لطفاً مبلغ، سود و تاریخ صدور را کامل وارد کن.";
+    return;
+  }
+
+  if (type === "single") {
+    if (!endIso) {
+      previewBox.textContent = "تاریخ سررسید را هم وارد کن.";
+      return;
+    }
+    const profit = calcFullProfit(principal, rate, startIso, endIso);
+    const amount = principal + profit;
+    previewBox.textContent =
+      "سود کل چک: " + formatMoney(profit) +
+      " — مبلغ چک: " + formatMoney(amount);
+  } else {
+    if (!monthlyPreview) {
+      previewBox.textContent = "تعداد ماه، تنفس و تاریخ صدور را تکمیل کن.";
+      return;
+    }
+    const effMonths    = monthlyPreview.months / 2 + monthlyPreview.grace * 0.5;
+    const totalPercent = rate * effMonths;
+    const totalProfit  = Math.round(principal * totalPercent / 100);
+    const totalAmount  = principal + totalProfit;
+    previewBox.textContent =
+      "سود کل سری: " + formatMoney(totalProfit) +
+      " — مجموع مبالغ چک‌ها: " + formatMoney(totalAmount) +
+      " — مبلغ هر چک: " + formatMoney(monthlyPreview.perAmount);
+  }
+}
+
+function saveCheck() {
+  const type      = document.getElementById("checkType").value;
+  const refId     = document.getElementById("refSelect").value;
+  const buyer     = document.getElementById("buyerName").value.trim();
+  const phone     = toLatinDigits(
+    document.getElementById("buyerPhone").value
+  ).replace(/[^0-9]/g,"");
+  const principal = parseMoney(document.getElementById("principal").value);
+  const rate      = parseFloat(toLatinDigits(
+    document.getElementById("rate").value
+  )) || 0;
+  const startIso  = document.getElementById("startDate").value;
+  const startJ    = document.getElementById("startJ").value;
+
+  if (!principal || !rate || !startIso) {
+    alert("مبلغ، سود و تاریخ صدور را کامل وارد کن.");
+    return;
+  }
+  if (!buyer) {
+    alert("نام خریدار را وارد کن.");
+    return;
+  }
+
+  const usedCodes = new Set(store.checks.map(c => c.code));
+
+  if (type === "single") {
+    const endIso = document.getElementById("endDate").value;
+    const endJ   = document.getElementById("endJ").value;
+    const code   = toLatinDigits(
+      document.getElementById("singleCode").value
+    ).replace(/[^0-9]/g,"");
+
+    if (!endIso || !endJ) {
+      alert("تاریخ سررسید چک را وارد کن.");
+      return;
+    }
+    if (!code || code.length !== 16) {
+      alert("شناسه باید ۱۶ رقم عددی باشد.");
+      return;
+    }
+    if (usedCodes.has(code)) {
+      alert("این شناسه قبلاً استفاده شده است.");
+      return;
+    }
+
+    const profit = calcFullProfit(principal, rate, startIso, endIso);
+    const amount = principal + profit;
+
+    const ch = {
+      id: newId(),
+      type: "single",
+      refId,
+      buyerName: buyer,
+      buyerPhone: phone || "",
+      code,
+      label: "",
+      note: "",
+      amount,
+      principal,
+      rate,
+      startDate: startIso,
+      endDate: endIso,
+      startJ,
+      endJ,
+      status: "unpaid",
+      extendedProfit: 0,
+      createdAt: todayIso()
+    };
+    store.checks.push(ch);
+  } else {
+    if (!monthlyPreview) {
+      alert("تعداد ماه، تنفس و تاریخ صدور را تکمیل کن.");
+      return;
+    }
+    const months    = monthlyPreview.months;
+    const perAmount = monthlyPreview.perAmount;
+    const listEl    = document.getElementById("monthlyList");
+    const codes = listEl.querySelectorAll(".monthly-code");
+    const ends  = listEl.querySelectorAll(".monthly-end");
+
+    if (codes.length !== months || ends.length !== months) {
+      alert("لیست چک‌های ماهانه ناقص است.");
+      return;
+    }
+
+    const localCodes = new Set();
+    const entries    = [];
+
+    for (let i = 0; i < months; i++) {
+      const codeEl = codes[i];
+      const endEl  = ends[i];
+      const code = toLatinDigits(codeEl.value).replace(/[^0-9]/g,"");
+      const endJ = endEl.value;
+
+      if (!code || code.length !== 16) {
+        alert("شناسه چک ماه " + (i+1) + " باید ۱۶ رقم باشد.");
+        return;
+      }
+      if (!endJ) {
+        alert("تاریخ سررسید چک ماه " + (i+1) + " را وارد کن.");
+        return;
+      }
+      if (usedCodes.has(code) || localCodes.has(code)) {
+        alert("شناسه چک ماه " + (i+1) + " تکراری است.");
+        return;
+      }
+      const endIso = parseJalaliShortToIso(endJ);
+      if (!endIso) {
+        alert("تاریخ سررسید چک ماه " + (i+1) + " نامعتبر است.");
+        return;
+      }
+      localCodes.add(code);
+      entries.push({ code, endJ, endIso });
+    }
+
+    entries.forEach(ent => {
+      const amount = perAmount;
+      const ch = {
+        id: newId(),
+        type: "monthly",
+        refId,
+        buyerName: buyer,
+        buyerPhone: phone || "",
+        code: ent.code,
+        label: "",
+        note: "",
+        amount,
+        principal,
+        rate,
+        startDate: startIso,
+        endDate: ent.endIso,
+        startJ,
+        endJ: ent.endJ,
+        status: "unpaid",
+        extendedProfit: 0,
+        createdAt: todayIso()
+      };
+      store.checks.push(ch);
+    });
+  }
+
+  saveStore();
+  clearAddForm();
+  recalcAll();
+  alert("چک(ها) با موفقیت ذخیره شد.");
+}
+
+function clearAddForm() {
+  document.getElementById("buyerName").value   = "";
+  document.getElementById("buyerPhone").value  = "";
+  document.getElementById("principal").value   = "";
+  document.getElementById("rate").value        = "";
+  document.getElementById("startJ").value      = "";
+  document.getElementById("startDate").value   = "";
+  document.getElementById("endJ").value        = "";
+  document.getElementById("endDate").value     = "";
+  document.getElementById("singleCode").value  = "";
+  document.getElementById("months").value      = "";
+  document.getElementById("graceMonths").value = "1";
+  document.getElementById("monthlyList").innerHTML = "";
+  document.getElementById("previewBox").textContent = "";
+  monthlyPreview = null;
+}
+
+// ---------- KPI ----------
+let futureDaysRange = 30;
+
+function calcKPIs() {
+  const today      = todayIso();
+  const monthStart = today.slice(0,8) + "01";
+  const nextEnd    = addDaysIso(today, futureDaysRange);
+
+  let profitToday = 0;
+  let profitMonth = 0;
+  let profitNext  = 0;
+  let totalProfit = 0;
+  let active = 0, near = 0, overdue = 0, paid = 0;
+
+  store.checks.forEach(ch => {
+    const baseFull = getProfitBase(ch);
+    totalProfit += calcFullProfit(baseFull, ch.rate, ch.startDate, ch.endDate);
+
+    if (ch.status === "paid") {
+      paid++;
+      return;
+    }
+    active++;
+
+    const daysToEnd = diffDays(today, ch.endDate);
+    if (daysToEnd < 0) overdue++;
+    else if (daysToEnd <= 10) near++;
+
+    const todayEnd  = addDaysIso(today,1);
+    const monthEnd  = addDaysIso(today,1);
+
+    profitToday += calcProfitInRange(ch, today, todayEnd);
+    profitMonth += calcProfitInRange(ch, monthStart, monthEnd);
+    profitNext  += calcProfitInRange(ch, today, nextEnd);
+  });
+
+  document.getElementById("kpiToday").textContent      = formatMoney(Math.round(profitToday));
+  document.getElementById("kpiMonth").textContent      = formatMoney(Math.round(profitMonth));
+  document.getElementById("kpiNext30").textContent     = formatMoney(Math.round(profitNext));
+  document.getElementById("kpiTotalProfit").textContent= formatMoney(Math.round(totalProfit));
+  document.getElementById("kpiActive").textContent     = String(active);
+  document.getElementById("kpiNear").textContent       = String(near);
+  document.getElementById("kpiOverdue").textContent    = String(overdue);
+  document.getElementById("kpiPaid").textContent       = String(paid);
+
+  const spanNext = document.getElementById("kpiNextDays");
+  if (spanNext) spanNext.textContent = String(futureDaysRange);
+}
+
+// ---------- Detail KPIs ----------
+function openDetail(mode) {
+  const body    = document.getElementById("detailBody");
+  const titleEl = document.getElementById("detailTitle");
+  const today   = todayIso();
+  const monthStart = today.slice(0,8) + "01";
+  const nextEnd    = addDaysIso(today, futureDaysRange);
+
+  let title = "جزئیات";
+  let filtered = store.checks.slice();
+
+  if (mode === "today") {
+    title = "چک‌های در جریان امروز";
+    filtered = filtered.filter(ch => {
+      if (ch.status === "paid") return false;
+      const d1 = diffDays(ch.startDate, today);
+      const d2 = diffDays(today, ch.endDate);
+      return d1 >= 0 && d2 >= 0;
+    });
+  } else if (mode === "month") {
+    title = "چک‌های ماه جاری";
+    filtered = filtered.filter(ch =>
+      diffDays(ch.startDate, monthStart) >= 0 &&
+      diffDays(monthStart, ch.endDate) >= 0
+    );
+  } else if (mode === "next30") {
+    title = `چک‌های ${futureDaysRange} روز آینده`;
+    filtered = filtered.filter(ch => {
+      if (ch.status === "paid") return false;
+      const d = diffDays(today, ch.endDate);
+      return d >= 0 && d <= futureDaysRange;
+    });
+  } else if (mode === "active") {
+    title = "چک‌های فعال";
+    filtered = filtered.filter(ch => ch.status !== "paid");
+  } else if (mode === "near") {
+    title = "چک‌های نزدیک سررسید (۱۰ روز)";
+    filtered = filtered.filter(ch => {
+      if (ch.status === "paid") return false;
+      const d = diffDays(today, ch.endDate);
+      return d >= 0 && d <= 10;
+    });
+  } else if (mode === "overdue") {
+    title = "چک‌های معوق";
+    filtered = filtered.filter(ch => {
+      if (ch.status === "paid") return false;
+      const d = diffDays(today, ch.endDate);
+      return d < 0;
+    });
+  } else if (mode === "paid") {
+    title = "چک‌های پرداخت‌شده";
+    filtered = filtered.filter(ch => ch.status === "paid");
+  }
+
+  titleEl.textContent = title;
+  let html = "";
+  filtered.forEach(ch => {
+    html += renderCheckCardHtml(ch);
+  });
+  body.innerHTML = html || "<div class='tiny'>چکی وجود ندارد.</div>";
+  document.getElementById("detailBack").style.display = "flex";
+}
+
+function closeDetail() {
+  document.getElementById("detailBack").style.display = "none";
+}
+
+// ---------- مدیریت ----------
+function clearSearch() {
+  const inp = document.getElementById("searchInput");
+  inp.value = "";
+  renderManage();
+}
+
+function clearFilters() {
+  document.getElementById("statusFilter").value = "any";
+  document.getElementById("fromJ").value = "";
+  document.getElementById("fromDate").value = "";
+  document.getElementById("toJ").value = "";
+  document.getElementById("toDate").value = "";
+  renderManage();
+}
+
+function renderManage() {
+  const container    = document.getElementById("manageList");
+  const mode         = document.getElementById("manageMode").value;
+  const statusFilter = document.getElementById("statusFilter").value;
+  const q = toLatinDigits(
+    document.getElementById("searchInput").value
+  ).toLowerCase();
+
+  const fromJ   = document.getElementById("fromJ").value;
+  const toJ     = document.getElementById("toJ").value;
+  const fromIso = parseJalaliShortToIso(fromJ);
+  const toIso   = parseJalaliShortToIso(toJ);
+
+  document.getElementById("fromDate").value = fromIso || "";
+  document.getElementById("toDate").value   = toIso   || "";
+
+  let checks = store.checks.slice();
+
+  // وضعیت
+  checks = checks.filter(ch => {
+    if (statusFilter === "any") return true;
+    if (statusFilter === "paid") return ch.status === "paid";
+    if (statusFilter === "unpaid") return ch.status !== "paid";
+    return true;
+  });
+
+  // بازه تاریخ سررسید
+  if (fromIso) {
+    checks = checks.filter(ch => diffDays(fromIso, ch.endDate) >= 0);
+  }
+  if (toIso) {
+    checks = checks.filter(ch => diffDays(ch.endDate, toIso) >= 0);
+  }
+
+  // جستجو
+  if (q) {
+    checks = checks.filter(ch => {
+      const ref = store.referrers.find(r => r.id === ch.refId);
+      const refName = ref ? ref.name : "";
+      const fields = [
+        ch.buyerName,
+        refName,
+        ch.code,
+        ch.buyerPhone,
+        ch.label,
+        ch.note
+      ].join(" ").toLowerCase();
+      return fields.includes(q);
+    });
+  }
+
+  container.innerHTML = "";
+
+  if (!checks.length) {
+    container.innerHTML = "<div class='tiny'>هیچ چکی مطابق فیلتر پیدا نشد.</div>";
+    return;
+  }
+
+  if (mode === "all") {
+    checks.forEach(ch => container.appendChild(renderCheckCard(ch)));
+  } else {
+    const byRef = {};
+    const archive = [];
+    checks.forEach(ch => {
+      if (ch.status === "paid") {
+        archive.push(ch);
+        return;
+      }
+      const refId = ch.refId || "default";
+      if (!byRef[refId]) byRef[refId] = [];
+      byRef[refId].push(ch);
+    });
+
+    store.referrers.forEach(r => {
+      const list = byRef[r.id] || [];
+      if (!list.length) return;
+      const folder = document.createElement("div");
+      folder.className = "folder";
+      folder.innerHTML = `
+        <div class="folder-main">
+          <div class="folder-name">${r.name}</div>
+          <div class="folder-meta">تعداد چک‌ها: ${list.length}</div>
+        </div>
+        <div class="folder-badge">نمایش</div>
+      `;
+      folder.addEventListener("click", () => {
+        showFolder(r, list);
+      });
+      container.appendChild(folder);
+    });
+
+    if (archive.length) {
+      const folder = document.createElement("div");
+      folder.className = "folder";
+      folder.innerHTML = `
+        <div class="folder-main">
+          <div class="folder-name">آرشیو چک‌های پرداخت‌شده</div>
+          <div class="folder-meta">تعداد چک‌ها: ${archive.length}</div>
+        </div>
+        <div class="folder-badge folder-archive">نمایش</div>
+      `;
+      folder.addEventListener("click", () => {
+        showFolder({ id:"archive", name:"آرشیو" }, archive);
+      });
+      container.appendChild(folder);
+    }
+  }
+}
+
+function showFolder(ref, list) {
+  const body    = document.getElementById("detailBody");
+  const titleEl = document.getElementById("detailTitle");
+  titleEl.textContent = "چک‌های " + ref.name;
+  let html = "";
+  list.forEach(ch => html += renderCheckCardHtml(ch));
+  body.innerHTML = html || "<div class='tiny'>چکی وجود ندارد.</div>";
+  document.getElementById("detailBack").style.display = "flex";
+}
+
+function renderCheckCardHtml(ch) {
+  const ref = store.referrers.find(r => r.id === ch.refId);
+  const refName = ref ? ref.name : "بدون معرف";
+  const today = todayIso();
+  let statusClass = "st-unpaid";
+  let statusText  = "فعال";
+
+  if (ch.status === "paid") {
+    statusClass = "st-paid";
+    statusText  = "پرداخت‌شده";
+  } else {
+    const d = diffDays(today, ch.endDate);
+    if (d < 0) {
+      statusClass = "st-overdue";
+      statusText  = "معوق";
+    } else if (d <= 10) {
+      statusClass = "st-near";
+      statusText  = "نزدیک سررسید";
+    }
+  }
+
+  return `
+    <div class="check-card">
+      <div class="check-top">
+        <div>
+          <div><b>${ch.buyerName}</b> — ${refName}</div>
+          <div class="tiny">شناسه: ${ch.code}</div>
+        </div>
+        <div>
+          <span class="status-pill ${statusClass}">${statusText}</span>
+        </div>
+      </div>
+      <div class="tiny">
+        مبلغ: ${formatMoney(ch.amount)} | سود ماهانه: ${ch.rate}٪
+      </div>
+      <div class="tiny">
+        تاریخ: ${isoToJalaliShort(ch.startDate)} → ${isoToJalaliShort(ch.endDate)}
+      </div>
+      <div class="check-actions">
+        <button class="small" onclick="openEdit('${ch.id}')">ویرایش</button>
+        <button class="small" onclick="togglePaid('${ch.id}')">
+          ${ch.status === "paid" ? "بازگرداندن به فعال" : "پرداخت شد"}
+        </button>
+        <button class="small danger" onclick="deleteCheck('${ch.id}')">حذف</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderCheckCard(ch) {
+  const wrapper = document.createElement("div");
+  wrapper.innerHTML = renderCheckCardHtml(ch);
+  return wrapper.firstElementChild;
+}
+
+function togglePaid(id) {
+  const ch = store.checks.find(c => c.id === id);
+  if (!ch) return;
+  ch.status = (ch.status === "paid") ? "unpaid" : "paid";
+  saveStore();
+  recalcAll();
+}
+
+function deleteCheck(id) {
+  if (!confirm("آیا از حذف این چک مطمئن هستی؟")) return;
+  store.checks = store.checks.filter(c => c.id !== id);
+  saveStore();
+  recalcAll();
+}
+
+// ---------- ویرایش ----------
+function openEdit(id) {
+  const ch = store.checks.find(c => c.id === id);
+  if (!ch) return;
+
+  document.getElementById("editId").value        = ch.id;
+  document.getElementById("editBuyer").value     = ch.buyerName;
+  document.getElementById("editPhone").value     = ch.buyerPhone || "";
+  document.getElementById("editCode").value      = ch.code;
+  document.getElementById("editLabel").value     = ch.label || "";
+  document.getElementById("editNote").value      = ch.note || "";
+  document.getElementById("editAmount").value    = formatMoney(ch.amount);
+  document.getElementById("editRate").value      = ch.rate;
+  document.getElementById("editType").value      = ch.type === "single" ? "چک یک‌باره" : "چک ماهانه";
+  document.getElementById("editStatus").value    = ch.status;
+  document.getElementById("editStart").value     = ch.startDate;
+  document.getElementById("editStartJ").value    = isoToJalaliShort(ch.startDate);
+  document.getElementById("editEnd").value       = ch.endDate;
+  document.getElementById("editEndJ").value      = isoToJalaliShort(ch.endDate);
+
+  const profit = calcFullProfit(getProfitBase(ch), ch.rate, ch.startDate, ch.endDate);
+  document.getElementById("editProfitDisplay").value =
+    formatMoney(profit + (ch.extendedProfit || 0));
+
+  renderReferrerSelects();
+  document.getElementById("editRef").value = ch.refId || "default";
+
+  document.getElementById("editBack").style.display = "flex";
+}
+
+function closeEdit() {
+  document.getElementById("editBack").style.display = "none";
+}
+
+function recomputeEditProfit() {
+  const id = document.getElementById("editId").value;
+  if (!id) return;
+  const ch = store.checks.find(c => c.id === id);
+  if (!ch) return;
+
+  const amount = parseMoney(document.getElementById("editAmount").value);
+  const rate   = parseFloat(toLatinDigits(
+    document.getElementById("editRate").value
+  )) || 0;
+  const startJ = document.getElementById("editStartJ").value;
+  const endJ   = document.getElementById("editEndJ").value;
+
+  const startIso = parseJalaliShortToIso(startJ);
+  const endIso   = parseJalaliShortToIso(endJ);
+  document.getElementById("editStart").value = startIso || "";
+  document.getElementById("editEnd").value   = endIso   || "";
+
+  let base;
+  if (ch.type === "single" && typeof ch.principal === "number" && ch.principal > 0) {
+    base = ch.principal;
+  } else {
+    base = amount;
+  }
+
+  const out = document.getElementById("editProfitDisplay");
+  if (!base || !rate || !startIso || !endIso) {
+    out.value = "";
+    return;
+  }
+
+  const profit = calcFullProfit(base, rate, startIso, endIso);
+  out.value = formatMoney(profit);
+}
+
+function applyEdit() {
+  const id  = document.getElementById("editId").value;
+  const ch  = store.checks.find(c => c.id === id);
+  if (!ch) return;
+
+  const buyer = document.getElementById("editBuyer").value.trim();
+  const refId = document.getElementById("editRef").value;
+  const phone = toLatinDigits(
+    document.getElementById("editPhone").value
+  ).replace(/[^0-9]/g,"");
+  const code  = toLatinDigits(
+    document.getElementById("editCode").value
+  ).replace(/[^0-9]/g,"");
+  const amount = parseMoney(document.getElementById("editAmount").value);
+  const rate   = parseFloat(toLatinDigits(
+    document.getElementById("editRate").value
+  )) || 0;
+  const startJ = document.getElementById("editStartJ").value;
+  const endJ   = document.getElementById("editEndJ").value;
+  const startIso = parseJalaliShortToIso(startJ);
+  const endIso   = parseJalaliShortToIso(endJ);
+  const status   = document.getElementById("editStatus").value;
+  const label    = document.getElementById("editLabel").value.trim();
+  const note     = document.getElementById("editNote").value.trim();
+
+  if (!buyer) {
+    alert("نام خریدار را وارد کن.");
+    return;
+  }
+  if (!code || code.length !== 16) {
+    alert("شناسه باید ۱۶ رقم باشد.");
+    return;
+  }
+  const exists = store.checks.some(
+    x => x.id !== ch.id && x.code === code
+  );
+  if (exists) {
+    alert("این شناسه در چک دیگری هم استفاده شده است.");
+    return;
+  }
+  if (!startIso || !endIso) {
+    alert("تاریخ‌های صدور و سررسید معتبر نیستند.");
+    return;
+  }
+
+  ch.buyerName = buyer;
+  ch.refId     = refId;
+  ch.buyerPhone= phone || "";
+  ch.code      = code;
+  ch.amount    = amount;
+  ch.rate      = rate;
+  ch.startDate = startIso;
+  ch.endDate   = endIso;
+  ch.startJ    = startJ;
+  ch.endJ      = endJ;
+  ch.status    = status;
+  ch.label     = label;
+  ch.note      = note;
+
+  const profit = calcFullProfit(getProfitBase(ch), ch.rate, ch.startDate, ch.endDate);
+  document.getElementById("editProfitDisplay").value =
+    formatMoney(profit + (ch.extendedProfit || 0));
+
+  saveStore();
+  recalcAll();
+  alert("تغییرات ذخیره شد.");
+  closeEdit();
+}
+
+// تمدید
+function extendCheck() {
+  const id = document.getElementById("editId").value;
+  const ch = store.checks.find(c => c.id === id);
+  if (!ch) return;
+
+  const currentJ = document.getElementById("editEndJ").value || isoToJalaliShort(ch.endDate);
+  const newDateStr = prompt("تاریخ سررسید جدید (yy/mm/dd):", currentJ);
+  if (!newDateStr) return;
+
+  const newIso = parseJalaliShortToIso(newDateStr);
+  if (!newIso) {
+    alert("تاریخ جدید نامعتبر است.");
+    return;
+  }
+
+  document.getElementById("editEndJ").value = newDateStr;
+  document.getElementById("editEnd").value = newIso;
+
+  ch.endDate = newIso;
+  ch.endJ    = newDateStr;
+
+  recomputeEditProfit();
+  saveStore();
+  recalcAll();
+  alert("تاریخ سررسید جدید ثبت شد.");
+}
+
+// ---------- پشتیبان ----------
+function exportCSV() {
+  let rows = [[
+    "id","type","refName","buyerName","buyerPhone","code",
+    "amount","principal","rateMonthly","startDate","endDate",
+    "status","extendedProfit","label","note"
+  ].join(",")];
+
+  store.checks.forEach(ch => {
+    const ref = store.referrers.find(r => r.id === ch.refId);
+    const refName = ref ? ref.name : "";
+    rows.push([
+      ch.id,
+      ch.type,
+      `"${refName}"`,
+      `"${ch.buyerName}"`,
+      ch.buyerPhone,
+      ch.code,
+      ch.amount,
+      ch.principal,
+      ch.rate,
+      ch.startDate,
+      ch.endDate,
+      ch.status,
+      ch.extendedProfit || 0,
+      `"${ch.label || ""}"`,
+      `"${(ch.note || "").replace(/"/g,'""')}"`
+    ].join(","));
+  });
+
+  const blob = new Blob([rows.join("\n")], { type:"text/csv;charset=utf-8" });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href = url;
+  a.download = "check-master.csv";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function exportJSON() {
+  const blob = new Blob([JSON.stringify(store,null,2)], {
+    type:"application/json;charset=utf-8"
+  });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement("a");
+  a.href = url;
+  a.download = "check-master-backup.json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function wipeData() {
+  if (!confirm("همه داده‌ها حذف شوند؟")) return;
+  localStorage.removeItem("checkMasterData");
+  loadStore();
+  renderReferrerSelects();
+  recalcAll();
+}
+      // ---------- رفرش کلی KPI و لیست مدیریت ----------
+function recalcAll() {
+  calcKPIs();
+  renderManage();
+}
+
+// ---------- شروع ----------
+document.addEventListener("DOMContentLoaded", () => {
+  loadStore();
+  renderReferrerSelects();
+  setupMoneyInputs();
+  setupNumericInputs();
+
+  setupJalaliInput("startJ", "startDate");
+  setupJalaliInput("endJ",   "endDate");
+  setupJalaliInput("fromJ",  "fromDate");
+  setupJalaliInput("toJ",    "toDate");
+  setupJalaliInput("editStartJ", "editStart");
+  setupJalaliInput("editEndJ",   "editEnd");
+
+  // سرچ زنده
+  const searchInput = document.getElementById("searchInput");
+  if (searchInput) searchInput.addEventListener("input", renderManage);
+
+  // وقتی ورودی‌های سری ماهانه عوض می‌شوند
+  ["months","graceMonths","principal","rate","startJ"].forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.addEventListener("blur", () => {
+      const typeSel = document.getElementById("checkType");
+      if (typeSel && typeSel.value === "monthly") {
+        generateMonthlySchedule();
+      }
+    });
+  });
+
+  // محاسبه‌ی زنده سود در ویرایش
+  ["editAmount","editRate","editStartJ","editEndJ"].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener("input", recomputeEditProfit);
+      el.addEventListener("blur",  recomputeEditProfit);
+    }
+  });
+
+  // سوییچ نوع چک
+  const typeSelect = document.getElementById("checkType");
+  if (typeSelect) {
+    typeSelect.addEventListener("change", window.onTypeChange);
+    window.onTypeChange();
+  }
+
+  recalcAll();
+  renderManage();
+});
+</script>
+</body>
+</html>
