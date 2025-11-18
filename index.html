@@ -2,7 +2,7 @@
 <html lang="fa" dir="rtl">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 
 <!-- برای iOS: فول‌اسکرین و مخفی شدن نوار سافاری بعد از Add to Home Screen -->
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -484,10 +484,18 @@
             <div class="kpi-sub">ریال</div>
           </div>
           <div class="kpi-card" onclick="openDetail('next30')">
-            <div class="kpi-title">سود <span id="kpiNextDays">۳۰</span> روز آینده</div>
-            <div class="kpi-value" id="kpiNext30">0</div>
-            <div class="kpi-sub">ریال</div>
-          </div>
+  <div class="kpi-title">
+    سود
+    <span id="kpiNextDays"
+          style="text-decoration: underline; cursor: pointer;"
+          onclick="event.stopPropagation(); changeFutureDays();">
+      ۳۰
+    </span>
+    روز آینده
+  </div>
+  <div class="kpi-value" id="kpiNext30">0</div>
+  <div class="kpi-sub">ریال</div>
+</div>
         </div>
         <div class="sep"></div>
         <div class="kpi-grid">
@@ -1223,11 +1231,12 @@
     }
 
     function getProfitBase(ch) {
-      if (ch.type === "single" && typeof ch.principal === "number" && ch.principal > 0) {
-        return ch.principal;
-      }
-      return ch.amount || 0;
-    }
+  // سود همیشه باید از "اصل" حساب شود، نه مبلغ چک
+  if (typeof ch.principal === "number" && ch.principal > 0) {
+    return ch.principal;
+  }
+  return 0;
+}
 
     function calcProfitInRange(ch, fromIso, toIso) {
       if (!ch.startDate || !ch.endDate) return 0;
@@ -1459,61 +1468,84 @@
     }
 
     // ---------- KPI ----------
-    let futureDaysRange = 30;
+    let futureDaysRange = 30; // همین متغیر را نگه دار
 
-    function calcKPIs() {
-      const today      = todayIso();
-      const monthStart = today.slice(0,8) + "01";
-      const nextEnd    = addDaysIso(today, futureDaysRange);
+function calcKPIs() {
+  const today      = todayIso();
+  const monthStart = today.slice(0,8) + "01";
 
-      let profitToday = 0;
-      let profitMonth = 0;
-      let profitNext  = 0;
-      let totalProfitBase = 0;
-      let extendedProfit = 0;
-      let active = 0, near = 0, overdue = 0, paid = 0;
+  // آخر ماه جاری
+  const tDate      = isoToDate(today);
+  const monthEndDt = new Date(tDate.getFullYear(), tDate.getMonth() + 1, 0);
+  const monthEnd   = [
+    monthEndDt.getFullYear(),
+    String(monthEndDt.getMonth() + 1).padStart(2,"0"),
+    String(monthEndDt.getDate()).padStart(2,"0")
+  ].join("-");
 
-      store.checks.forEach(ch => {
-        if (ch.status === "paid") {
-          paid++;
-          return;
-        }
+  const nextEnd    = addDaysIso(today, futureDaysRange);
 
-        const baseFull = getProfitBase(ch);
-        totalProfitBase += calcFullProfit(baseFull, ch.rate, ch.startDate, ch.endDate);
-        extendedProfit += ch.extendedProfit || 0;
+  let profitToday = 0;
+  let profitMonth = 0;
+  let profitNext  = 0;
+  let totalProfit = 0;
 
-        active++;
+  let active = 0, near = 0, overdue = 0, paid = 0;
 
-        const daysToEnd = diffDays(today, ch.endDate);
-        if (daysToEnd < 0) overdue++;
-        else if (daysToEnd <= 10) near++;
+  store.checks.forEach(ch => {
+    const baseFull = getProfitBase(ch);
 
-        const todayEnd  = addDaysIso(today,1);
-        const monthEnd  = addDaysIso(today,1);
+    // اگر پرداخت شده، فقط در شمارنده "پرداختی" بیاید، نه در سودها
+    if (ch.status === "paid") {
+      paid++;
+      return;
+    }
 
-        profitToday += calcProfitInRange(ch, today, todayEnd);
-        profitMonth += calcProfitInRange(ch, monthStart, monthEnd);
-        profitNext  += calcProfitInRange(ch, today, nextEnd);
-      });
+    // همه این سودها فقط برای چک‌های فعال است
+    if (baseFull && ch.rate && ch.startDate && ch.endDate) {
+      totalProfit += calcFullProfit(baseFull, ch.rate, ch.startDate, ch.endDate);
+    }
 
-      const totalWithExt = totalProfitBase + extendedProfit;
+    active++;
 
-      document.getElementById("kpiToday").textContent      = formatMoney(Math.round(profitToday));
-      document.getElementById("kpiMonth").textContent      = formatMoney(Math.round(profitMonth));
-      document.getElementById("kpiNext30").textContent     = formatMoney(Math.round(profitNext));
+    const daysToEnd = diffDays(today, ch.endDate);
+    if (daysToEnd < 0) overdue++;
+    else if (daysToEnd <= 10) near++;
 
-      document.getElementById("kpiTotalProfitBase").textContent = formatMoney(Math.round(totalProfitBase));
-      document.getElementById("kpiExtendedProfit").textContent  = formatMoney(Math.round(extendedProfit));
-      document.getElementById("kpiTotalProfit").textContent     = formatMoney(Math.round(totalWithExt));
+    const todayEnd = addDaysIso(today, 1);
+    profitToday += calcProfitInRange(ch, today, todayEnd);
+    profitMonth += calcProfitInRange(ch, monthStart, monthEnd);
+    profitNext  += calcProfitInRange(ch, today, nextEnd);
+  });
 
-      document.getElementById("kpiActive").textContent     = String(active);
-      document.getElementById("kpiNear").textContent       = String(near);
-      document.getElementById("kpiOverdue").textContent    = String(overdue);
-      document.getElementById("kpiPaid").textContent       = String(paid);
+  document.getElementById("kpiToday").textContent       = formatMoney(Math.round(profitToday));
+  document.getElementById("kpiMonth").textContent       = formatMoney(Math.round(profitMonth));
+  document.getElementById("kpiNext30").textContent      = formatMoney(Math.round(profitNext));
+  document.getElementById("kpiTotalProfit").textContent = formatMoney(Math.round(totalProfit));
 
-      const spanNext = document.getElementById("kpiNextDays");
-      if (spanNext) spanNext.textContent = String(futureDaysRange);
+  document.getElementById("kpiActive").textContent  = String(active);
+  document.getElementById("kpiNear").textContent    = String(near);
+  document.getElementById("kpiOverdue").textContent = String(overdue);
+  document.getElementById("kpiPaid").textContent    = String(paid);
+
+  const spanNext = document.getElementById("kpiNextDays");
+  if (spanNext) spanNext.textContent = String(futureDaysRange);
+}
+      
+      function changeFutureDays() {
+  const current = String(futureDaysRange || 30);
+  const input = prompt("سود چند روز آینده محاسبه شود؟", current);
+  if (!input) return;
+
+  const n = parseInt(toLatinDigits(input).replace(/[^0-9]/g,""), 10);
+  if (!n || n <= 0 || n > 365) {
+    alert("عدد بین ۱ تا ۳۶۵ وارد کن.");
+    return;
+  }
+
+  futureDaysRange = n;
+  recalcAll();
+}
 
       // رنگی کردن کارت‌های فعال و معوق
       const activeCard = document.getElementById("kpiActive")?.closest(".kpi-card");
@@ -2182,14 +2214,5 @@
       renderManage();
     });
   </script>
-  <script>
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('sw.js').catch(err => {
-      console.log('SW error', err);
-    });
-  });
-}
-</script>
 </body>
 </html>
