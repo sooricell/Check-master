@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+
+  <!-- مهم: جلوگیری از زوم و ثابت ماندن مقیاس روی موبایل -->
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"
+  />
+
+  <title>Check Master</title>
+
+  <!-- PWA / iOS -->
+  <meta name="theme-color" content="#050608">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Check Master">
+
+   <!-- آیکن‌ها -->
+  <!-- favicon اصلی از روی SVG -->
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+
+  <!-- آیکن‌های PWA (حتماً این دو تا فایل PNG رو بساز) -->
+  <link rel="apple-touch-icon" href="icon-192.png">
+
+  <!-- Manifest (برای PWA) -->
+  <link rel="manifest" href="manifest.json">
+
+  <style>
+    :root {
+      --bg: #050608;
+      --bg-soft: #0b0c10;
+      --card: #0f1015;
+      --border: #2f323a;
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --accent: #e5c07b;
+      --danger: #ef4444;
+      --success: #22c55e;
+      --tab-h: 60px;
+    }
+
+    * { box-sizing: border-box; }
+
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -webkit-text-size-adjust: 100%;
+      -webkit-tap-highlight-color: transparent;
+      touch-action: manipulation;
+      overflow-x: hidden;
+    }
+
+    body {
+      padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom));
+      font-size: 15px;
+    }
+
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: rgba(7,8,12,0.96);
+      border-bottom: 1px solid rgba(75,85,99,0.7);
+      padding: 10px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .brand-icon {
+      width: 26px;
+      height: 26px;
+      border-radius: 8px;
+      border: 1px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      background: #111318;
+    }
+
+    .brand-title {
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    main {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 12px;
+    }
+
+    h2 {
+      font-size: 17px;
+      margin: 0 0 4px;
+    }
+
+    h3 {
+      font-size: 15px;
+      margin: 0 0 6px;
+    }
+
+    .subtitle {
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .card {
+      background: var(--card);
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin: 4px 2px;
+    }
+
+    input, select, textarea, button {
+      font-family: inherit;
+      font-size: 16px;  /* مهم: برای جلوگیری از زوم روی iOS */
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border-radius: 10px;
+      border: 1px solid rgba(75,85,99,0.9);
+      background: #050608;
+      color: var(--text);
+      padding: 7px 9px;
+    }
+
+    input::placeholder, textarea::placeholder {
+      color: #6b7280;
+    }
+
+    input:focus, select:focus, textarea:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: 0;
+      border-color: var(--accent);
+    }
+
+    textarea {
+      min-height: 60px;
+      resize: vertical;
+    }
+
+    button {
+      cursor: pointer;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.7);
+      background: #050608;
+      color: var(--text);
+      padding: 7px 14px;
+      font-weight: 500;
+    }
+
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #111827;
+    }
+
+    button.small {
+      padding: 4px 9px;
+      font-size: 12px;
+    }
+
+    button.danger {
+      border-color: rgba(248,113,113,0.7);
+      color: #fecaca;
+    }
+
+    button:active {
+      transform: scale(0.97);
+    }
+
+    .row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .row > div {
+      flex: 1;
+      min-width: 150px;
+    }
+
+    .tiny {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .sep {
+      height: 1px;
+      background: rgba(55,65,81,0.9);
+      margin: 8px 0;
+    }
+
+    .hidden { display: none; }
+
+    /* Tabs */
+    .tabs {
+      position: fixed;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: calc(var(--tab-h) + env(safe-area-inset-bottom));
+      padding-bottom: env(safe-area-inset-bottom);
+      background: rgba(7,8,12,0.97);
+      border-top: 1px solid rgba(55,65,81,0.9);
+      display: flex;
+      z-index: 20;
+    }
+
+    .tab {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 2px;
+      font-size: 11px;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .tab-icon {
+      width: 22px;
+      height: 22px;
+      border-radius: 999px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid transparent;
+      font-size: 14px;
+    }
+
+    .tab.active {
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .tab.active .tab-icon {
+      border-color: var(--accent);
+    }
+
+    /* KPI */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px,1fr));
+      gap: 8px;
+    }
+
+    .kpi-card {
+      border-radius: 12px;
+      border: 1px solid rgba(75,85,99,0.9);
+      padding: 7px 9px;
+      cursor: pointer;
+      background: #050608;
+    }
+
+    .kpi-title {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 3px;
+    }
+
+    .kpi-value {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .kpi-sub {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    /* Manage */
+    .folder {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 9px;
+      border-radius: 12px;
+      border: 1px solid rgba(75,85,99,0.9);
+      background: #050608;
+      margin-bottom: 6px;
+      cursor: pointer;
+    }
+
+    .folder-main {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .folder-name {
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    .folder-meta {
+      font-size: 11px;
+      color: var(--muted);
+    }
+
+    .folder-badge {
+      font-size: 11px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      border: 1px solid rgba(148,163,184,0.9);
+      color: var(--muted);
+    }
+
+    .folder-archive {
+      border-color: rgba(129,140,248,0.9);
+    }
+
+    .check-card {
+      border-radius: 11px;
+      border: 1px solid rgba(75,85,99,0.9);
+      padding: 6px 7px;
+      margin-bottom: 5px;
+      font-size: 12px;
+      background: #050608;
+    }
+
+    .check-top {
+      display: flex;
+      justify-content: space-between;
+      gap: 4px;
+    }
+
+    .status-pill {
+      font-size: 10px;
+      padding: 2px 7px;
+      border-radius: 999px;
+      border: 1px solid;
+    }
+
+    .st-unpaid { color: #fbbf24; border-color: #fbbf24; }
+    .st-near   { color: #fb923c; border-color: #fb923c; }
+    .st-overdue{ color: #f97373; border-color: #f97373; }
+    .st-paid   { color: #4ade80; border-color: #4ade80; }
+    .st-extended { color:#a855f7; border-color:#a855f7; }
+
+    .check-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+    }
+
+    /* Overlays */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15,23,42,0.85);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+    }
+
+    .overlay-card {
+      width: min(520px, 100% - 24px);
+      max-height: calc(100vh - 40px);
+      overflow: auto;
+      background: #050608;
+      border-radius: 14px;
+      border: 1px solid rgba(75,85,99,0.9);
+      padding: 10px;
+    }
+
+    .overlay-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 6px;
+    }
+
+    .overlay-body {
+      font-size: 12px;
+    }
+
+    .search-wrap {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .search-input {
+      width: 100%;
+      border-radius: 999px;
+      padding-right: 28px;
+    }
+
+    .search-icon {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 13px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    .search-clear {
+      border-radius: 999px;
+      border: 1px solid rgba(75,85,99,0.9);
+      background: transparent;
+      color: var(--muted);
+      padding: 4px 8px;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg: #f3f4f6;
+        --bg-soft: #f9fafb;
+        --card: #ffffff;
+        --border: #d1d5db;
+        --text: #111827;
+        --muted: #6b7280;
+        --accent: #d4a15d;
+      }
+      header { background: #f9fafb; }
+      .tabs { background: #f9fafb; }
+      .card, .folder, .check-card, .kpi-card { background: #ffffff; }
+      input, select, textarea {
+        background: #f9fafb;
+        color: #111827;
+      }
+      button {
+        background: #f9fafb;
+        color: #111827;
+      }
+      button.primary {
+        background: var(--accent);
+        color: #111827;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <div class="brand-icon">✓</div>
+      <div class="brand-title">Check Master</div>
+    </div>
+  </header>
+
+  <main>
+    <!-- گزارش -->
+    <section id="view-report">
+      <h2>گزارش سود و وضعیت چک‌ها</h2>
+      <div class="subtitle">سود روزانه، ماهانه، آینده و وضعیت کلی چک‌ها.</div>
+
+      <div class="card">
+        <div class="kpi-grid">
+          <div class="kpi-card" onclick="openDetail('today')">
+            <div class="kpi-title">سود امروز</div>
+            <div class="kpi-value" id="kpiToday">0</div>
+            <div class="kpi-sub">ریال</div>
+          </div>
+          <div class="kpi-card" onclick="openDetail('month')">
+            <div class="kpi-title">سود ماه جاری</div>
+            <div class="kpi-value" id="kpiMonth">0</div>
+            <div class="kpi-sub">ریال</div>
+          </div>
+          <div class="kpi-card" onclick="openDetail('next30')">
+            <div class="kpi-title">
+              سود
+              <span id="kpiNextDays"
+                    style="text-decoration: underline; cursor: pointer;"
+                    onclick="event.stopPropagation(); changeFutureDays();">
+                ۳۰
+              </span>
+              روز آینده
+            </div>
+            <div class="kpi-value" id="kpiNext30">0</div>
+            <div class="kpi-sub">ریال</div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="kpi-grid">
+          <div class="kpi-card" onclick="openDetail('active')">
+            <div class="kpi-title">چک‌های فعال</div>
+            <div class="kpi-value" id="kpiActive">0</div>
+          </div>
+          <div class="kpi-card" onclick="openDetail('near')">
+            <div class="kpi-title">نزدیک سررسید (۱۰ روز)</div>
+            <div class="kpi-value" id="kpiNear">0</div>
+          </div>
+          <div class="kpi-card" onclick="openDetail('overdue')">
+            <div class="kpi-title">چک‌های معوق</div>
+            <div class="kpi-value" id="kpiOverdue">0</div>
+          </div>
+          <div class="kpi-card" onclick="openDetail('paid')">
+            <div class="kpi-title">چک‌های پرداخت‌شده</div>
+            <div class="kpi-value" id="kpiPaid">0</div>
+          </div>
+        </div>
+
+        <div class="sep"></div>
+
+        <div class="kpi-title">سود کل (بدون تمدید)</div>
+        <div class="kpi-value" id="kpiTotalProfitBase">0</div>
+
+        <div class="kpi-title" style="margin-top:4px;">سود تمدیدها</div>
+        <div class="kpi-value" id="kpiExtendedProfit">0</div>
+
+        <div class="kpi-title" style="margin-top:4px;">سود کل + تمدید</div>
+        <div class="kpi-value" id="kpiTotalProfit">0</div>
+      </div>
+    </section>
+
+    <!-- افزودن چک -->
+    <section id="view-add" class="hidden">
+      <h2>افزودن چک</h2>
+      <div class="subtitle">چک یک‌باره یا سری چک‌های ماهانه بر اساس سود ماهانه.</div>
+
+      <div class="card">
+        <div class="row">
+          <div>
+            <label>نوع چک</label>
+            <select id="checkType">
+              <option value="single">چک یک‌باره</option>
+              <option value="monthly">چک‌های ماهانه</option>
+            </select>
+          </div>
+          <div>
+            <label>معرف</label>
+            <select id="refSelect"></select>
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>نام خریدار</label>
+            <input id="buyerName" placeholder="مثلاً: آقای حسینی">
+          </div>
+          <div>
+            <label>شماره تلفن خریدار (اختیاری)</label>
+            <input id="buyerPhone" class="phone-input" placeholder="مثلاً: 0912..." inputmode="tel">
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>مبلغ کل اصل (ریال)</label>
+            <input id="principal" class="money-input" data-money="1" placeholder="100,000,000">
+          </div>
+          <div>
+            <label>درصد سود ماهانه (%)</label>
+            <input id="rate" class="numeric-dec" placeholder="مثلاً: 10" inputmode="decimal">
+          </div>
+        </div>
+
+        <div class="row">
+          <div>
+            <label>تاریخ صدور (جلالی - yy/mm/dd)</label>
+            <input id="startJ" class="jalali-input" placeholder="03/11/05">
+            <input id="startDate" type="hidden">
+          </div>
+          <div id="singleEndWrap">
+            <label>تاریخ سررسید (جلالی - yy/mm/dd)</label>
+            <input id="endJ" class="jalali-input" placeholder="03/12/05">
+            <input id="endDate" type="hidden">
+          </div>
+        </div>
+
+        <div id="singleExtra">
+          <div class="row">
+            <div>
+              <label>شناسه ۱۶ رقمی چک</label>
+              <input id="singleCode" class="code-16" maxlength="16" inputmode="numeric" placeholder="فقط عدد">
+            </div>
+          </div>
+        </div>
+
+        <div id="monthlyExtra" class="hidden">
+          <div class="row">
+            <div>
+              <label>تعداد ماه</label>
+              <input id="months" class="numeric-int" inputmode="numeric" placeholder="مثلاً: 5">
+            </div>
+            <div>
+              <label>تعداد ماه تنفس</label>
+              <input id="graceMonths" class="numeric-int" inputmode="numeric" value="1">
+            </div>
+          </div>
+          <div class="sep"></div>
+          <div class="tiny">برای هر ماه، تاریخ سررسید جلالی و شناسه چک را می‌توانی ویرایش کنی.</div>
+          <div id="monthlyList" style="margin-top:6px;"></div>
+        </div>
+
+        <div class="sep"></div>
+        <button onclick="previewCalc()">محاسبه پیش‌نمایش سود</button>
+        <div id="previewBox" class="tiny" style="margin-top:4px;"></div>
+
+        <div style="margin-top:10px;">
+          <button class="primary" onclick="saveCheck()">ذخیره چک</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- مدیریت چک‌ها -->
+    <section id="view-manage" class="hidden">
+      <h2>مدیریت چک‌ها</h2>
+      <div class="subtitle">جستجو، فیلتر، پوشه‌بندی و آرشیو چک‌ها.</div>
+
+      <div class="card">
+        <label>جستجو</label>
+        <div class="search-wrap">
+          <div style="position:relative; flex:1;">
+            <input id="searchInput" class="search-input" placeholder="خریدار، معرف، شناسه، تلفن، برچسب">
+            <span class="search-icon">🔍</span>
+          </div>
+          <button class="search-clear" onclick="clearSearch()">حذف</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="row">
+          <div>
+            <label>حالت نمایش</label>
+            <select id="manageMode" onchange="renderManage()">
+              <option value="folders">بر اساس معرف‌ها</option>
+              <option value="all">لیست همه چک‌ها</option>
+            </select>
+          </div>
+          <div>
+            <label>فیلتر وضعیت</label>
+            <select id="statusFilter" onchange="renderManage()">
+              <option value="any">همه</option>
+              <option value="unpaid">فعال / نزدیک / معوق</option>
+              <option value="paid">پرداخت‌شده</option>
+            </select>
+          </div>
+        </div>
+        <div class="row" style="margin-top:4px;">
+          <div>
+            <label>از تاریخ سررسید (جلالی - yy/mm/dd)</label>
+            <input id="fromJ" class="jalali-input" placeholder="03/01/01">
+            <input id="fromDate" type="hidden">
+          </div>
+          <div>
+            <label>تا تاریخ سررسید (جلالی - yy/mm/dd)</label>
+            <input id="toJ" class="jalali-input" placeholder="03/12/29">
+            <input id="toDate" type="hidden">
+          </div>
+        </div>
+        <div style="margin-top:6px;">
+          <button class="small" onclick="clearFilters()">حذف فیلترها</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>افزودن معرف جدید</h3>
+        <div class="row">
+          <div><input id="newReferrer" placeholder="نام معرف (مثلاً: علی رضایی)"></div>
+          <div><button class="primary" onclick="addReferrer()">افزودن معرف</button></div>
+        </div>
+      </div>
+
+      <div id="manageList"></div>
+    </section>
+
+    <!-- تنظیمات -->
+    <section id="view-settings" class="hidden">
+      <h2>تنظیمات</h2>
+      <div class="subtitle">پشتیبان، حذف داده‌ها، اطلاعات توسعه‌دهنده.</div>
+
+      <div class="card">
+        <h3>پشتیبان‌گیری</h3>
+        <div class="row">
+          <div><button onclick="exportCSV()">خروجی CSV</button></div>
+          <div><button onclick="exportJSON()">پشتیبان JSON</button></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>حذف کامل همه داده‌ها</h3>
+        <div class="tiny">همه معرف‌ها و چک‌ها پاک می‌شوند.</div>
+        <div style="margin-top:6px;">
+          <button class="danger" onclick="wipeData()">حذف همه داده‌ها</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>درباره Check Master</h3>
+        <div class="tiny">
+          <div>مدیریت چک و سود روزانه/ماهانه با تاریخ جلالی.</div>
+          <div>Developer: <b>Soroush</b></div>
+          <div>نسخه: 4.0 (Jalali + Profit + PWA)</div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- تب‌ها -->
+  <nav class="tabs">
+    <div class="tab active" data-target="view-report" onclick="switchTab(event)">
+      <div class="tab-icon">📊</div>
+      <div>گزارش</div>
+    </div>
+    <div class="tab" data-target="view-add" onclick="switchTab(event)">
+      <div class="tab-icon">➕</div>
+      <div>افزودن چک</div>
+    </div>
+    <div class="tab" data-target="view-manage" onclick="switchTab(event)">
+      <div class="tab-icon">📂</div>
+      <div>مدیریت</div>
+    </div>
+    <div class="tab" data-target="view-settings" onclick="switchTab(event)">
+      <div class="tab-icon">⚙️</div>
+      <div>تنظیمات</div>
+    </div>
+  </nav>
+
+  <!-- جزئیات گزارش -->
+  <div id="detailBack" class="overlay" onclick="if(event.target.id==='detailBack') closeDetail()">
+    <div class="overlay-card">
+      <div class="overlay-header">
+        <h3 id="detailTitle">جزئیات</h3>
+        <button class="small" onclick="closeDetail()">بستن</button>
+      </div>
+      <div id="detailBody" class="overlay-body"></div>
+    </div>
+  </div>
+
+  <!-- ویرایش / تمدید چک -->
+  <div id="editBack" class="overlay" onclick="if(event.target.id==='editBack') closeEdit()">
+    <div class="overlay-card">
+      <div class="overlay-header">
+        <h3>ویرایش / تمدید چک</h3>
+        <button class="small" onclick="closeEdit()">بستن</button>
+      </div>
+      <div class="overlay-body">
+        <input type="hidden" id="editId">
+        <div class="row">
+          <div>
+            <label>نام خریدار</label>
+            <input id="editBuyer">
+          </div>
+          <div>
+            <label>معرف</label>
+            <select id="editRef"></select>
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>نوع چک</label>
+            <input id="editType" disabled>
+          </div>
+          <div>
+            <label>شماره تلفن (اختیاری)</label>
+            <input id="editPhone" class="phone-input">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>شناسه ۱۶ رقمی</label>
+            <input id="editCode" class="code-16" maxlength="16" inputmode="numeric">
+          </div>
+          <div>
+            <label>برچسب</label>
+            <input id="editLabel" placeholder="مثلاً: بازار، طلا، ...">
+          </div>
+        </div>
+        <div>
+          <label>یادداشت</label>
+          <textarea id="editNote" placeholder="توضیح کوتاه"></textarea>
+        </div>
+        <div class="row">
+          <div>
+            <label>مبلغ چک (نمایشی)</label>
+            <input id="editAmount" class="money-input" data-money="1">
+          </div>
+          <div>
+            <label>درصد سود ماهانه (%)</label>
+            <input id="editRate" class="numeric-dec" inputmode="decimal">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>تاریخ صدور (جلالی)</label>
+            <input id="editStartJ" class="jalali-input">
+            <input id="editStart" type="hidden">
+          </div>
+          <div>
+            <label>تاریخ سررسید (جلالی)</label>
+            <input id="editEndJ" class="jalali-input">
+            <input id="editEnd" type="hidden">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>وضعیت</label>
+            <select id="editStatus">
+              <option value="unpaid">فعال</option>
+              <option value="paid">پرداخت‌شده</option>
+            </select>
+          </div>
+          <div>
+            <label>سود کل این چک (اصل×نرخ×روز/۳۰ + تمدید)</label>
+            <input id="editProfitDisplay" disabled>
+          </div>
+        </div>
+        <div class="tiny" style="margin-top:4px;">
+          سود همیشه از روی <b>اصل چک</b> و تعداد روزها و درصد ماهانه دوباره محاسبه می‌شود.
+          مبلغ چک فقط نمایش است.
+        </div>
+        <div class="sep"></div>
+        <div class="row">
+          <div><button class="primary" onclick="applyEdit()">ذخیره تغییرات</button></div>
+          <div><button onclick="extendCheck()">تمدید با تاریخ جدید</button></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- اسکریپت اصلی -->
+  <script src="main.js"></script>
+</body>
+</html>
