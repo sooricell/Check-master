@@ -1,11 +1,12 @@
 {
   "name": "Check Master",
-  "short_name": "CheckMaster",
-  "start_url": "./",
+  "short_name": "Check Master",
+  "lang": "fa-IR",
+  "dir": "rtl",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#050608",
   "theme_color": "#050608",
-  "orientation": "portrait",
   "icons": [
     {
       "src": "icon-192.png",
