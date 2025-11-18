@@ -3,19 +3,13 @@
 function toEnglishDigits(str) {
   if (!str) return "";
   const persian = "۰۱۲۳۴۵۶۷۸۹";
-  const arabic = "٠١٢٣٤٥٦٧٨٩";
+  const arabic = "٠١٢٢٣٤٥٦٧٨٩".replace("٢","2"); // just in case
   let res = "";
   for (const ch of String(str)) {
     const p = persian.indexOf(ch);
-    if (p !== -1) {
-      res += String(p);
-      continue;
-    }
+    if (p !== -1) { res += String(p); continue; }
     const a = arabic.indexOf(ch);
-    if (a !== -1) {
-      res += String(a);
-      continue;
-    }
+    if (a !== -1) { res += String(a); continue; }
     res += ch;
   }
   return res;
@@ -64,6 +58,21 @@ function jalaliToIndex(j) {
 function diffJalaliDays(j1, j2) {
   if (!j1 || !j2) return 0;
   return jalaliToIndex(j2) - jalaliToIndex(j1);
+}
+
+// اضافه کردن n ماه به تاریخ جلالی (برای سری چک‌های ماهانه)
+function addJalaliMonths(j, add) {
+  let year = 1400 + j.yy;
+  let month = j.mm + add;
+  while (month > 12) {
+    month -= 12;
+    year++;
+  }
+  const monthDays = [31,31,31,31,31,31,30,30,30,30,30,29];
+  let day = j.dd;
+  const maxDay = monthDays[month - 1];
+  if (day > maxDay) day = maxDay;
+  return { yy: year - 1400, mm: month, dd: day };
 }
 
 // بازه‌ی فعال هر چک (با در نظر گرفتن extraDays)
@@ -175,6 +184,7 @@ window.addEventListener("DOMContentLoaded", () => {
   updateKPIs();
   renderManage();
 
+  // ثبت سرویس‌ورکر برای کار آفلاین
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("./sw.js").catch(err =>
       console.log("SW register error", err)
@@ -367,8 +377,8 @@ function buildSingleCheckFromForm() {
   return [check];
 }
 
-// چک‌های ماهانه
-function buildMonthlyChecksFromForm() {
+// ساخت برنامه‌ی سری چک‌های ماهانه (فقط تاریخ‌ها و اصل هر چک)
+function buildMonthlyBaseChecks() {
   const base = getFormBaseData();
   const months = Number(toEnglishDigits(document.getElementById("months").value));
   const graceMonths = Number(
@@ -380,32 +390,60 @@ function buildMonthlyChecksFromForm() {
 
   const seriesId = genId();
   const checks = [];
+  const principalPerCheck = Math.round(base.principal / months);
+
+  for (let i = 0; i < months; i++) {
+    const offsetMonths = graceMonths + i; // دقیقا به تعداد ماه
+    const endJ = addJalaliMonths(base.startJ, offsetMonths);
+    const endJStr = jalaliToString(endJ);
+
+    checks.push({
+      id: genId(),
+      type: "monthly",
+      seriesId,
+      index: i + 1,
+      ref: base.ref,
+      buyer: base.buyer,
+      phone: base.phone,
+      principal: principalPerCheck, // اصل هر چک = اصل کل / تعداد ماه
+      rate: base.rate,
+      startJ: base.startJ,
+      startJStr: base.startJStr,
+      endJ,
+      endJStr,
+      amount: principalPerCheck, // نمایش
+      code: "",
+      label: "",
+      note: "",
+      status: "unpaid",
+      extraDays: 0,
+      extraProfit: 0
+    });
+  }
+
+  return checks;
+}
+
+function buildMonthlyChecksFromForm() {
+  const base = getFormBaseData();
+  const months = Number(toEnglishDigits(document.getElementById("months").value));
+  const graceMonths = Number(
+    toEnglishDigits(document.getElementById("graceMonths").value || "0")
+  );
+
+  if (!months || months <= 0 || months > 36)
+    throw new Error("تعداد ماه باید بین 1 تا 36 باشد.");
+
+  const schedule = buildMonthlyBaseChecks();
+  const principalPerCheck = schedule[0].principal;
+  const seriesId = schedule[0].seriesId;
+
+  const checks = [];
   const monthlyList = document.getElementById("monthlyList");
   const rows = monthlyList.querySelectorAll("[data-month-index]");
 
-  // اگر کاربر لیست را ویرایش کرده، از روی UI بخوانیم
   if (rows.length > 0) {
-    // start قسط اول = تاریخ شروع پایه + ماه‌های تنفس
-    let currentStart = (() => {
-      const baseIdx = jalaliToIndex(base.startJ);
-      const startIdx = baseIdx + graceMonths * 30;
-      const totalMonths = Math.floor(startIdx / 30);
-      const dayInMonth = (startIdx % 30) + 1;
-      const year = Math.floor(totalMonths / 12);
-      const month = (totalMonths % 12) + 1;
-      const jy = year - 1400;
-      const sJ = { yy: jy, mm: month, dd: dayInMonth };
-      return sJ;
-    })();
-
-    // ردیف‌ها را بر اساس index مرتب کنیم
-    const sortedRows = Array.from(rows).sort(
-      (a, b) =>
-        Number(a.getAttribute("data-month-index")) -
-        Number(b.getAttribute("data-month-index"))
-    );
-
-    sortedRows.forEach(row => {
+    rows.forEach(row => {
       const idx = Number(row.getAttribute("data-month-index"));
       const endJInput = row.querySelector(".m-end");
       const codeInput = row.querySelector(".m-code");
@@ -417,10 +455,7 @@ function buildMonthlyChecksFromForm() {
         throw new Error("تاریخ سررسید قسط " + idx + " نامعتبر است.");
 
       const code = codeInput.value.trim();
-      const amount = parseMoney(amtInput.value);
-
-      const startJ = currentStart;
-      const startJStr = jalaliToString(startJ);
+      const amount = parseMoney(amtInput.value) || principalPerCheck;
 
       checks.push({
         id: genId(),
@@ -430,10 +465,10 @@ function buildMonthlyChecksFromForm() {
         ref: base.ref,
         buyer: base.buyer,
         phone: base.phone,
-        principal: base.principal,
+        principal: principalPerCheck, // برای سود همین را استفاده می‌کنیم
         rate: base.rate,
-        startJ,
-        startJStr,
+        startJ: base.startJ,
+        startJStr: base.startJStr,
         endJ,
         endJStr,
         amount,
@@ -444,128 +479,47 @@ function buildMonthlyChecksFromForm() {
         extraDays: 0,
         extraProfit: 0
       });
-
-      // start قسط بعد = end همین قسط
-      currentStart = endJ;
     });
-
     return checks;
   }
 
-  // اگر UI هنوز ساخته نشده، خودمان تاریخ‌ها را بسازیم (هر قسط ۳۰ روز)
-  const baseIdx = jalaliToIndex(base.startJ);
-  let startIdx = baseIdx + graceMonths * 30;
-
-  for (let i = 0; i < months; i++) {
-    const endIdx = startIdx + 30;
-    const totalMonthsStart = Math.floor(startIdx / 30);
-    const dayInMonthStart = (startIdx % 30) + 1;
-    const yearStart = Math.floor(totalMonthsStart / 12);
-    const monthStart = (totalMonthsStart % 12) + 1;
-    const jyStart = yearStart - 1400;
-    const startJ = { yy: jyStart, mm: monthStart, dd: dayInMonthStart };
-    const startJStr = jalaliToString(startJ);
-
-    const totalMonthsEnd = Math.floor(endIdx / 30);
-    const dayInMonthEnd = (endIdx % 30) + 1;
-    const yearEnd = Math.floor(totalMonthsEnd / 12);
-    const monthEnd = (totalMonthsEnd % 12) + 1;
-    const jyEnd = yearEnd - 1400;
-    const endJ = { yy: jyEnd, mm: monthEnd, dd: dayInMonthEnd };
-    const endJStr = jalaliToString(endJ);
-
-    checks.push({
-      id: genId(),
-      type: "monthly",
-      seriesId,
-      index: i + 1,
-      ref: base.ref,
-      buyer: base.buyer,
-      phone: base.phone,
-      principal: base.principal,
-      rate: base.rate,
-      startJ,
-      startJStr,
-      endJ,
-      endJStr,
-      amount: 0,
-      code: "",
-      label: "",
-      note: "",
-      status: "unpaid",
-      extraDays: 0,
-      extraProfit: 0
-    });
-
-    startIdx = endIdx; // شروع قسط بعدی
-  }
-
-  return checks;
+  // اگر به هر دلیلی UI ساخته نشده باشد، از schedule استفاده می‌کنیم
+  return schedule;
 }
 
-// ساخت UI چک‌های ماهانه (فقط ظاهر)
 function buildMonthlyUI() {
   const list = document.getElementById("monthlyList");
   if (!list) return;
-
-  list.innerHTML = "";
-  let base;
   try {
-    base = getFormBaseData();
+    const checks = buildMonthlyBaseChecks(); // فقط برای نمایش
+    list.innerHTML = "";
+    checks.forEach(ch => {
+      const row = document.createElement("div");
+      row.className = "check-card";
+      row.setAttribute("data-month-index", String(ch.index));
+      row.innerHTML = `
+        <div class="row">
+          <div>
+            <label>قسط ${ch.index} - شناسه ۱۶ رقمی</label>
+            <input class="code-16 m-code" maxlength="16" inputmode="numeric" placeholder="فقط عدد">
+          </div>
+          <div>
+            <label>تاریخ سررسید (جلالی)</label>
+            <input class="jalali-input m-end" value="${ch.endJStr}">
+          </div>
+        </div>
+        <div class="row">
+          <div>
+            <label>مبلغ چک (تومان)</label>
+            <input class="money-input m-amount" data-money="1" value="${formatMoney(ch.amount)}" readonly>
+          </div>
+        </div>
+      `;
+      list.appendChild(row);
+    });
   } catch (e) {
     list.innerHTML =
       '<div class="tiny" style="color:#fecaca;">' + e.message + "</div>";
-    return;
-  }
-
-  const months = Number(toEnglishDigits(document.getElementById("months").value));
-  const graceMonths = Number(
-    toEnglishDigits(document.getElementById("graceMonths").value || "0")
-  );
-
-  if (!months || months <= 0 || months > 36) {
-    list.innerHTML =
-      '<div class="tiny" style="color:#fecaca;">تعداد ماه بین ۱ تا ۳۶ باشد.</div>';
-    return;
-  }
-
-  const baseIdx = jalaliToIndex(base.startJ);
-  let startIdx = baseIdx + graceMonths * 30;
-
-  for (let i = 0; i < months; i++) {
-    const endIdx = startIdx + 30;
-    const totalMonthsEnd = Math.floor(endIdx / 30);
-    const dayInMonthEnd = (endIdx % 30) + 1;
-    const yearEnd = Math.floor(totalMonthsEnd / 12);
-    const monthEnd = (totalMonthsEnd % 12) + 1;
-    const jyEnd = yearEnd - 1400;
-    const endJ = { yy: jyEnd, mm: monthEnd, dd: dayInMonthEnd };
-    const endJStr = jalaliToString(endJ);
-
-    const row = document.createElement("div");
-    row.className = "check-card";
-    row.setAttribute("data-month-index", String(i + 1));
-    row.innerHTML = `
-      <div class="row">
-        <div>
-          <label>قسط ${i + 1} - تاریخ سررسید (جلالی)</label>
-          <input class="jalali-input m-end" value="${endJStr}">
-        </div>
-        <div>
-          <label>شناسه ۱۶ رقمی</label>
-          <input class="code-16 m-code" maxlength="16" inputmode="numeric" placeholder="فقط عدد">
-        </div>
-      </div>
-      <div class="row">
-        <div>
-          <label>مبلغ چک (نمایشی)</label>
-          <input class="money-input m-amount" data-money="1" placeholder="مثلاً 120,000,000">
-        </div>
-      </div>
-    `;
-    list.appendChild(row);
-
-    startIdx = endIdx;
   }
 }
 
@@ -593,7 +547,7 @@ function previewCalc() {
   box.textContent = "";
   try {
     const type = document.getElementById("checkType").value;
-    const checks =
+    let checks =
       type === "single"
         ? buildSingleCheckFromForm()
         : buildMonthlyChecksFromForm();
@@ -608,7 +562,7 @@ function previewCalc() {
       checks.length +
       "</b> | سود کل تقریبی: <b>" +
       formatMoney(Math.round(totalProfit)) +
-      "</b> ریال";
+      "</b> تومان";
   } catch (e) {
     box.innerHTML =
       '<span style="color:#fecaca;">' + e.message + "</span>";
@@ -618,7 +572,7 @@ function previewCalc() {
 function saveCheck() {
   try {
     const type = document.getElementById("checkType").value;
-    const checks =
+    let checks =
       type === "single"
         ? buildSingleCheckFromForm()
         : buildMonthlyChecksFromForm();
@@ -689,11 +643,14 @@ function updateKPIs() {
   let paid = 0;
 
   state.checks.forEach(ch => {
+    const r = getCheckRange(ch);
     const full = calcProfitForCheck(ch);
     totalBase += full.base;
     totalExtra += full.extra;
 
-    todayProfit += intervalProfit(ch, todayIdx, todayIdx + 1);
+    const daily = intervalProfit(ch, todayIdx, todayIdx + 1);
+    todayProfit += daily;
+
     monthProfit += intervalProfit(ch, monthStartIdx, monthEndIdx);
     futureProfit += intervalProfit(ch, futureStartIdx, futureEndIdx);
 
@@ -785,7 +742,8 @@ function renderManage() {
         (ch.label || "") +
         " " +
         (ch.phone || "")
-      ).toLowerCase();
+      )
+        .toLowerCase();
       if (!hay.includes(search)) return false;
     }
     return true;
@@ -807,8 +765,6 @@ function renderManage() {
     });
 
     byRef.forEach((checks, ref) => {
-      const block = document.createElement("div");
-
       const folder = document.createElement("div");
       folder.className = "folder";
       const unpaidCount = checks.filter(c => c.status !== "paid").length;
@@ -820,17 +776,13 @@ function renderManage() {
             ${checks.length} چک | فعال: ${unpaidCount} | پرداخت‌شده: ${paidCount}
           </div>
         </div>
-        <div class="folder-badge">لیست چک‌ها</div>
+        <div class="folder-badge">نمایش جزئیات زیر</div>
       `;
+      list.appendChild(folder);
 
-      const children = document.createElement("div");
       checks
         .sort((a, b) => jalaliToIndex(a.endJ) - jalaliToIndex(b.endJ))
-        .forEach(ch => children.appendChild(buildCheckCard(ch)));
-
-      block.appendChild(folder);
-      block.appendChild(children);
-      list.appendChild(block);
+        .forEach(ch => list.appendChild(buildCheckCard(ch)));
     });
   } else {
     filtered
@@ -941,16 +893,25 @@ function openDetail(kind) {
     checks = state.checks.filter(c => c.status === "paid");
   }
 
-  let total = 0;
-  let html = "";
+  let totalProfit = 0;
+  let totalPrincipal = 0;
 
   if (profitFn) {
-    checks.forEach(ch => (total += profitFn(ch)));
+    checks.forEach(ch => {
+      totalProfit += profitFn(ch);
+      totalPrincipal += ch.principal || 0;
+    });
   }
 
-  html += `<div class="tiny">تعداد چک‌ها: ${checks.length} | جمع سود این بخش: ${formatMoney(
-    Math.round(total)
-  )} ریال</div><div class="sep"></div>`;
+  const totalAll = totalPrincipal + totalProfit;
+
+  let html = `<div class="tiny">تعداد چک‌ها: ${checks.length} | جمع سود این بخش: ${formatMoney(
+    Math.round(totalProfit)
+  )} تومان | جمع اصل: ${formatMoney(
+    Math.round(totalPrincipal)
+  )} تومان | جمع کل (اصل + سود): ${formatMoney(
+    Math.round(totalAll)
+  )} تومان</div><div class="sep"></div>`;
 
   if (!checks.length) {
     html += '<div class="tiny">چکی در این بخش وجود ندارد.</div>';
@@ -969,7 +930,7 @@ function openDetail(kind) {
                   صدور: ${ch.startJStr} | سررسید: ${ch.endJStr}
                 </div>
                 <div class="tiny">
-                  اصل: ${formatMoney(ch.principal)} | سود کل: ${formatMoney(Math.round(p.total))}
+                  اصل: ${formatMoney(ch.principal)} | سود کل: ${formatMoney(Math.round(p.total))} تومان
                 </div>
               </div>
               <div class="status-pill ${st.cls}">${st.text}</div>
