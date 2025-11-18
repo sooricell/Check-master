@@ -354,12 +354,19 @@
       gap: 4px;
     }
 
+    /* استایل کپسول وضعیت اصلاح‌شده */
     .status-pill {
-      font-size: 10px;
-      padding: 2px 7px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: 3px 10px;
       border-radius: 999px;
       border: 1px solid;
+      font-size: 11px;
+      line-height: 1;
       white-space: nowrap;
+      min-width: 0;
+      height: auto;
     }
 
     .st-unpaid { color: #fbbf24; border-color: #fbbf24; }
@@ -369,17 +376,11 @@
     .st-extended { color:#a855f7; border-color:#a855f7; }
 
     .check-actions {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 6px;
-}
-
-/* دکمه‌های کوچک داخل کارت چک، عرض مساوی و ظاهر مرتب‌تر */
-.check-actions .small {
-  flex: 1 1 130px;
-  text-align: center;
-}
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+      margin-top: 4px;
+    }
 
     /* Overlays */
     .overlay {
@@ -673,7 +674,8 @@
         <div class="row">
           <div>
             <label>حالت نمایش</label>
-            <select id="manageMode" onchange="renderManage()">
+            <!-- اینجا onchange عوض شده -->
+            <select id="manageMode" onchange="onManageModeChange()">
               <option value="folders">بر اساس معرف‌ها</option>
               <option value="all">لیست همه چک‌ها</option>
             </select>
