@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
 
-  <!-- مهم: جلوگیری از زوم و ثابت ماندن مقیاس روی موبایل -->
+  <!-- جلوگیری از زوم و فیت شدن روی موبایل -->
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover"
@@ -17,12 +17,11 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Check Master">
 
-   <!-- آیکن‌ها -->
-  <!-- favicon اصلی از روی SVG -->
-<link rel="apple-touch-icon" href="icon.svg">
-<link rel="icon" type="image/svg+xml" href="icon.svg">
+  <!-- آیکن‌ها -->
+  <link rel="apple-touch-icon" href="icon.svg">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
 
-  <!-- Manifest (برای PWA) -->
+  <!-- Manifest -->
   <link rel="manifest" href="manifest.json">
 
   <style>
@@ -52,10 +51,12 @@
       -webkit-tap-highlight-color: transparent;
       touch-action: manipulation;
       overflow-x: hidden;
+      height: 100%;
     }
 
     body {
       padding-bottom: calc(var(--tab-h) + env(safe-area-inset-bottom));
+      padding-top: env(safe-area-inset-top);
       font-size: 15px;
     }
 
@@ -65,7 +66,7 @@
       z-index: 10;
       background: rgba(7,8,12,0.96);
       border-bottom: 1px solid rgba(75,85,99,0.7);
-      padding: 10px 14px;
+      padding: calc(8px + env(safe-area-inset-top)) 14px 10px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -133,7 +134,7 @@
 
     input, select, textarea, button {
       font-family: inherit;
-      font-size: 16px;  /* مهم: برای جلوگیری از زوم روی iOS */
+      font-size: 16px; /* جلوگیری از زوم روی iOS */
     }
 
     input, select, textarea {
@@ -327,6 +328,7 @@
       border-radius: 999px;
       border: 1px solid rgba(148,163,184,0.9);
       color: var(--muted);
+      white-space: nowrap;
     }
 
     .folder-archive {
@@ -346,6 +348,7 @@
       display: flex;
       justify-content: space-between;
       gap: 4px;
+      align-items: flex-start; /* جلوگیری از کشیده شدن استاتوس‌پیل */
     }
 
     .status-pill {
@@ -353,6 +356,10 @@
       padding: 2px 7px;
       border-radius: 999px;
       border: 1px solid;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
     }
 
     .st-unpaid { color: #fbbf24; border-color: #fbbf24; }
@@ -473,19 +480,19 @@
     <!-- گزارش -->
     <section id="view-report">
       <h2>گزارش سود و وضعیت چک‌ها</h2>
-      <div class="subtitle">سود روزانه، ماهانه، آینده و وضعیت کلی چک‌ها.</div>
+      <div class="subtitle">سود روزانه، ماهانه، آینده و وضعیت کلی چک‌ها (همه مبالغ به تومان است).</div>
 
       <div class="card">
         <div class="kpi-grid">
           <div class="kpi-card" onclick="openDetail('today')">
             <div class="kpi-title">سود امروز</div>
             <div class="kpi-value" id="kpiToday">0</div>
-            <div class="kpi-sub">ریال</div>
+            <div class="kpi-sub">تومان</div>
           </div>
           <div class="kpi-card" onclick="openDetail('month')">
             <div class="kpi-title">سود ماه جاری</div>
             <div class="kpi-value" id="kpiMonth">0</div>
-            <div class="kpi-sub">ریال</div>
+            <div class="kpi-sub">تومان</div>
           </div>
           <div class="kpi-card" onclick="openDetail('next30')">
             <div class="kpi-title">
@@ -498,7 +505,7 @@
               روز آینده
             </div>
             <div class="kpi-value" id="kpiNext30">0</div>
-            <div class="kpi-sub">ریال</div>
+            <div class="kpi-sub">تومان</div>
           </div>
         </div>
 
@@ -539,7 +546,7 @@
     <!-- افزودن چک -->
     <section id="view-add" class="hidden">
       <h2>افزودن چک</h2>
-      <div class="subtitle">چک یک‌باره یا سری چک‌های ماهانه بر اساس سود ماهانه.</div>
+      <div class="subtitle">چک یک‌باره یا سری چک‌های ماهانه بر اساس سود ماهانه (همه مبالغ تومان).</div>
 
       <div class="card">
         <div class="row">
@@ -569,7 +576,7 @@
 
         <div class="row">
           <div>
-            <label>مبلغ کل اصل (ریال)</label>
+            <label>مبلغ کل اصل (تومان)</label>
             <input id="principal" class="money-input" data-money="1" placeholder="100,000,000">
           </div>
           <div>
@@ -612,7 +619,7 @@
             </div>
           </div>
           <div class="sep"></div>
-          <div class="tiny">برای هر ماه، تاریخ سررسید جلالی و شناسه چک را می‌توانی ویرایش کنی.</div>
+          <div class="tiny">برای هر ماه، تاریخ سررسید جلالی، شناسه چک و مبلغ قسط را می‌توانی ویرایش کنی.</div>
           <div id="monthlyList" style="margin-top:6px;"></div>
         </div>
 
@@ -715,6 +722,7 @@
           <div>مدیریت چک و سود روزانه/ماهانه با تاریخ جلالی.</div>
           <div>Developer: <b>Soroush</b></div>
           <div>نسخه: 4.0 (Jalali + Profit + PWA)</div>
+          <div>تمام مبالغ در برنامه بر حسب <b>تومان</b> است.</div>
         </div>
       </div>
     </section>
@@ -796,7 +804,7 @@
         </div>
         <div class="row">
           <div>
-            <label>مبلغ چک (نمایشی)</label>
+            <label>مبلغ چک (نمایشی - تومان)</label>
             <input id="editAmount" class="money-input" data-money="1">
           </div>
           <div>
@@ -825,13 +833,13 @@
             </select>
           </div>
           <div>
-            <label>سود کل این چک (اصل×نرخ×روز/۳۰ + تمدید)</label>
+            <label>سود کل این چک (بر حسب تومان)</label>
             <input id="editProfitDisplay" disabled>
           </div>
         </div>
         <div class="tiny" style="margin-top:4px;">
           سود همیشه از روی <b>اصل چک</b> و تعداد روزها و درصد ماهانه دوباره محاسبه می‌شود.
-          مبلغ چک فقط نمایش است.
+          مبلغ چک فقط نمایش است (همه مقادیر به تومان).
         </div>
         <div class="sep"></div>
         <div class="row">
